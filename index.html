@@ -539,10 +539,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       </section>
       <section class="block">
         <h2>Agenten</h2>
-        <p class="note">Die Knöpfe schreiben nur Befehle. Gearbeitet wird erst, wenn der Agent sie abholt.</p>
-        <h3 class="phase">Markenrichtung wählen</h3>
-        <div class="vlist" id="richtungen"></div>
-        <h3 class="phase">Aufträge</h3>
+        <p class="note">Nur Anzeige. Gesteuert wird Nico über seine Karte (Klick auf Nico).</p>
         <details class="aufklapp" open>
           <summary>Aufträge</summary>
           <div id="agentenList"></div>
@@ -575,19 +572,8 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       </section>
 
       <section class="block">
-        <h2>Produkt-Recherche</h2>
-        <form class="grid2" id="rechercheForm">
-          <input id="rThema" placeholder="Thema, z. B. Haushalt und Ordnung" required maxlength="120">
-          <button type="submit">Recherche starten</button>
-        </form>
-        <div class="note" id="rHinweis"></div>
-        <div class="note" style="margin-top:10px">Vorschläge passend zu deinem Markenbrief</div>
-        <div id="vorschlaege" class="vlist"></div>
-        <div class="note" style="margin-top:14px">Bisherige Recherchen</div>
-        <details class="aufklapp">
-          <summary>Recherchen anzeigen</summary>
-          <div id="auftraege"></div>
-        </details>
+        <h2>Produkte</h2>
+        <p class="note">Nur die Produkte, die den Trichter überstanden haben. Recherchen steuerst du bei Nico.</p>
         <div id="products" style="margin-top:8px"></div>
         <label class="importbtn">Rechercheergebnis importieren (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
         <div class="note" id="importInfo"></div>
@@ -621,6 +607,16 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       <section class="block" data-panel="nico">
         <h2>Nico (Scout)</h2>
         <div id="nicoKarte"></div>
+        <h3 class="phase">Markenrichtung wählen</h3>
+        <div class="vlist" id="richtungen"></div>
+        <form class="grid2" id="rechercheForm">
+          <input id="rThema" placeholder="Eigenes Thema, z. B. Haushalt und Ordnung" required maxlength="120">
+          <button type="submit">Recherche starten</button>
+        </form>
+        <div class="note" id="rHinweis"></div>
+        <div id="vorschlaege" class="vlist"></div>
+        <h3 class="phase">Aufträge</h3>
+        <div id="auftraege"></div>
       </section>
       <section class="block">
         <h2>Entscheidungen</h2>
@@ -853,17 +849,10 @@ async function loadAgenten(){
   if (e1) return showErr("Aufträge konnten nicht geladen werden: " + e1.message);
   const { data: befehle, error: e2 } = await sb.from("agent_befehle").select("*").eq("erledigt", false).order("created_at", { ascending: false });
   $("agentenList").innerHTML = (auftraege || []).map(a => `
-    <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
+    <div class="auftrag">
       <span class="astatus ${esc(a.status)}">${AGENT_STATUS[a.status] || esc(a.status)}</span>
       <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
-      <span class="agent-knoepfe">
-        <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
-        <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
-        <button type="button" class="ghost" data-act="weiter" ${a.status === "fertig" ? "disabled" : ""}>Weiter prüfen</button>
-        <button type="button" class="ghost" data-act="verwerfen" ${a.status === "fertig" ? "disabled" : ""}>Verwerfen</button>
-        <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
-      </span>
-    </div>`).join("") || `<div class="empty">Noch keine Aufträge. Wähl oben eine Markenrichtung.</div>`;
+    </div>`).join("") || `<div class="empty">Noch keine Aufträge.</div>`;
   if (e2) {
     $("befehleList").innerHTML = `<div class="empty">Befehle sind noch nicht eingerichtet: schema_agent_befehle.sql im Supabase-SQL-Editor ausführen.</div>`;
   } else {
@@ -1339,10 +1328,12 @@ function sortProducts(list){
 }
 
 function renderProducts(){
-  if (!products.length) {
-    $("products").innerHTML = `<div class="empty">Noch keine Produkte. Trag unten das erste ein.</div>`;
+  // Nur die übrig gebliebenen Produkte: verworfene (rot oder mit Grund) gehören nicht hierher
+  const uebrig = products.filter(p => !p.verworfen_weil && p.ampel !== "rot");
+  if (!uebrig.length) {
+    $("products").innerHTML = `<div class="empty">Noch keine Produkte. Sobald eine Recherche durch ist, erscheinen die übrig gebliebenen hier.</div>`;
   } else {
-    $("products").innerHTML = sortProducts(products).map(p => `
+    $("products").innerHTML = sortProducts(uebrig).map(p => `
       <div class="prod ${p.verworfen_weil ? "verworfen" : ""}" data-id="${esc(p.id)}">
         <span class="ampel ${esc(p.ampel)}" title="Ampel aus der Recherche"></span>
         <div class="pn">${esc(p.name)}<small>${esc(p.grund || "")}</small>${prodDetails(p)}</div>
@@ -1714,7 +1705,6 @@ function renderNicoKarte(){
   const status = nicoZeile ? nicoZeile.cls : "frei";
   const was = nicoZeile ? nicoZeile.text : "Gerade nichts offen";
   const bild = nicoBild ? `<img class="nico-bild" alt="Nico im Büro" src="${nicoBild}">` : "";
-  const liste = letzteAuftraege.slice(0, 5).map(a => `<div class="auftrag"><span class="astatus ${esc(a.status)}">${AUFTRAG_TEXT[a.status] || esc(a.status)}</span><span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span></div>`).join("");
   el.innerHTML = `
     <div class="nico-karte">
       <div class="nico-gross">${bild || fig}</div>
@@ -1724,8 +1714,7 @@ function renderNicoKarte(){
         <div class="nico-status ${esc(status)}">${esc(was)}</div>
       </div>
     </div>
-    <h3 class="phase">Letzte Aufträge</h3>
-    ${liste || `<div class="empty">Noch keine Aufträge.</div>`}`;
+    `;
 }
 // Klick auf Nico öffnet diese Karte
 function openNico(){ nicoFokus(true); renderNicoKarte(); openPanel("nico"); }
@@ -2349,7 +2338,7 @@ document.querySelectorAll(".nico[data-icon]").forEach(el => { el.innerHTML = pix
 $("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb3", T: "#e7d7b8", A: "#e7d7b8", P: "#5a5046"}, CORINNA_MAP);
 
 // ---------- Panels ----------
-const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Nico (Scout)":"nico","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
+const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Nico (Scout)":"nico","Aufgaben":"aufgaben","Produkte":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
 document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
 function openPanel(key){
   document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
