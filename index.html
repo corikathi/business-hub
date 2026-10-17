@@ -2514,6 +2514,11 @@ $("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb
 const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Nico (Scout)":"nico","Aufgaben":"aufgaben","Produkte":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
 document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
 function openPanel(key){
+  // Nur Nicos Fenster steht neben ihm, alle anderen Bereiche wieder mittig
+  if (key !== "nico") {
+    const d = $("drawer");
+    d.style.width = ""; d.style.left = ""; d.style.top = ""; d.style.transform = "";
+  }
   document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
   const title = Object.keys(PANEL_KEYS).find(k => PANEL_KEYS[k] === key) || "";
   $("dTitle").textContent = title;
