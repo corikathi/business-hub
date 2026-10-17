@@ -147,7 +147,12 @@ button.nchip.late{border-color:var(--red)}
 .auftrag-karte.st-fertig .ak-balken i.voll{background:var(--ok)}
 .ak-stufe{font-size:11px;color:var(--muted)}
 .ak-frage{font-size:13px;white-space:pre-line;line-height:1.5}
-.ak-empfehlung{font-size:13px;font-weight:700;color:var(--warn)}
+.ak-empfehlung{display:grid;gap:2px;font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(245,194,107,.08);border-left:3px solid var(--warn)}
+.ak-empfehlung b{color:var(--warn)}
+.ak-empfehlung span{color:var(--ink)}
+.ak-teil{font-size:13px}
+.ak-teil b{display:block;margin-bottom:2px}
+.ak-punkte{margin:0;padding-left:18px;display:grid;gap:3px}
 .ak-text{font-size:13px}
 .ak-text b{color:var(--warn)}
 /* Aufträge mit Knöpfen: Text oben, Knöpfe darunter, nichts überlagert sich */
@@ -1638,6 +1643,18 @@ function auftragZustand(a){
 function zustandRang(a){ return {du: 0, arbeitet: 1, nico: 2, neu: 3}[auftragZustand(a)] ?? 4; }
 const ZUSTAND_TEXT = {arbeitet: "Arbeitet", du: "Du bist dran", nico: "Wartet auf Nico", neu: "Nicht gestartet", fertig: "Fertig", verworfen: "Verworfen"};
 
+// Nicos Frage gegliedert: was passiert ist, Ergebnis als Punkte, Empfehlung mit Grund, Frage
+function frageHtml(frage, empfehlung){
+  const zeilen = String(frage || "").split("\n").map(z => z.trim()).filter(Boolean);
+  const punkte = zeilen.filter(z => /^[-•]s/.test(z)).map(z => `<li>${esc(z.replace(/^[-•]s*/, ""))}</li>`).join("");
+  const warum = zeilen.find(z => /^Warum:/i.test(z));
+  const einleitung = zeilen.filter(z => !/^[-•]s/.test(z) && !/^Warum:/i.test(z)).map(esc).join("<br>");
+  return `<div class="ak-frage">${einleitung}</div>`
+    + (punkte ? `<div class="ak-teil"><b>Ergebnis</b><ul class="ak-punkte">${punkte}</ul></div>` : "")
+    + (empfehlung ? `<div class="ak-empfehlung"><b>⭐ Empfehlung: ${esc(empfehlung)}</b>${warum ? `<span>${esc(warum)}</span>` : ""}</div>` : "")
+    + `<div class="ak-teil"><b>Was soll ich tun?</b></div>`;
+}
+
 function auftragKarte(a, mitKnoepfen){
   const z = auftragZustand(a);
   const stufe = a.stufe || 0;
@@ -1658,7 +1675,7 @@ function auftragKarte(a, mitKnoepfen){
       <div class="ak-balken">${balken}</div>
       <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
       ${z === "du" && a.frage
-        ? `<div class="ak-frage">${esc(a.frage)}</div>${a.empfehlung ? `<div class="ak-empfehlung">⭐ Empfehlung: ${esc(a.empfehlung)}</div>` : ""}`
+        ? frageHtml(a.frage, a.empfehlung)
         : (a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : "")}
       ${knoepfe ? `<div class="agent-knoepfe">${knoepfe}</div>` : ""}
     </div>`;
