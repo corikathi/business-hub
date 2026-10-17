@@ -436,6 +436,13 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   .buehne .teambar{align-self:end;padding-bottom:4px}
   .phasecol{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:none}
   .phasecol::-webkit-scrollbar{display:none}
+  /* Auf niedrigen Bildschirmen die Karten enger, damit nichts scrollt */
+  @media (max-height:960px){
+    .phasecol .next{gap:6px}
+    .phasecol .acard{padding:8px 12px}
+    .phasecol .acard b{font-size:15px}
+    .phasecol .acard span{font-size:12px}
+  }
   .phasecol .next{flex:1;display:flex;flex-direction:column;gap:8px}
   .phasecol .next .acard{flex:1 1 auto;padding:10px 14px;gap:4px;border-radius:14px}
 }
