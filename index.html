@@ -1797,7 +1797,6 @@ function renderNicoKarte(){
   const bild = nicoBild ? `<img class="nico-bild" alt="Nico im Büro" src="${nicoBild}">` : "";
   el.innerHTML = `
     <div class="nico-karte">
-      <div class="nico-gross">${fig}</div>
       <div class="nico-infos">
         <b>Nico (Scout)</b>
         <span class="muted">Produktrecherche</span>
@@ -1828,7 +1827,7 @@ function placeNicoDrawer(){
   d.style.transition = "none";
   d.style.width = breite + "px";
   d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
-  d.style.top = Math.max(12, Math.min(p.y - 60, innerHeight - 220)) + "px";
+  d.style.top = Math.max(12, Math.min(p.y - 260, innerHeight - 220)) + "px";
   d.style.transform = "none";
 }
 
