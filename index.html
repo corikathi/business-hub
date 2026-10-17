@@ -358,13 +358,13 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
 
 /* Handy: das Menü wird zur App-Leiste unten, das Büro bleibt oben */
 @media (max-width:860px){
-  body{padding:12px 10px 104px}
+  body{padding:12px 10px calc(120px + env(safe-area-inset-bottom))}
   header{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:20;display:block;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0;border:1px solid var(--line);border-bottom:0;background:var(--panel);box-shadow:0 -10px 30px rgba(0,0,0,.4)}
   header > h1, nav.menu .hallo, nav.menu .navuhr, nav.menu .ngroup{display:none}
-  nav.menu{display:flex;flex-direction:row;flex-wrap:nowrap;gap:2px;overflow-x:auto;scrollbar-width:none;justify-content:space-between}
+  nav.menu{display:flex;flex-direction:row;flex-wrap:nowrap;gap:0;overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
   nav.menu::-webkit-scrollbar{display:none}
   nav.menu[hidden], header:has(> nav.menu[hidden]){display:none !important}
-  nav.menu button.tab{flex:1 0 auto;min-width:62px;width:auto;flex-direction:column;justify-content:center;gap:3px;padding:8px 4px;font-size:11px;font-weight:700;text-align:center;border-radius:12px;position:relative}
+  nav.menu button.tab{flex:0 0 auto;min-width:0;width:auto;flex-direction:column;justify-content:center;gap:3px;padding:8px 9px;font-size:11px;font-weight:700;text-align:center;border-radius:12px;position:relative}
   nav.menu button.tab .nico{width:24px;height:24px}
   nav.menu button.tab .nico .pix{width:22px;height:22px}
   nav.menu button.tab.on{background:rgba(95,212,255,.12);color:var(--accent);box-shadow:none}
