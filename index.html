@@ -903,7 +903,9 @@ const RICHTUNGEN = ["Alle Richtungen vergleichen", "Besser schlafen", "Pilates u
 const AGENT_STATUS = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 
 function renderRichtungen(){
-  $("richtungen").innerHTML = RICHTUNGEN.map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
+  // Verworfene Richtungen werden nicht mehr vorgeschlagen
+  const verworfen = new Set(letzteAuftraege.filter(a => a.status === "fertig" && /^Verworfen/i.test(a.fortschritt || "")).map(a => a.thema));
+  $("richtungen").innerHTML = RICHTUNGEN.filter(r => !verworfen.has(r)).map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
 }
 
 async function befehlSenden(agent, aktion, thema, auftragId, wert){
@@ -966,6 +968,14 @@ async function agentAktion(e){
   }
   if (act === "antwort") {
     const wert = btn.dataset.wert;
+    // Pausieren: der Auftrag wartet auf dich, Frage und Optionen bleiben sichtbar
+    if (wert === "Pausieren") {
+      const { error } = await sb.from("recherche_auftraege")
+        .update({ status: "offen", wartet_auf: "corinna", fortschritt: "Pausiert, bis du Helium 10 hast. Danach hier weitermachen." }).eq("id", id);
+      if (error) return showErr("Pausieren konnte nicht gespeichert werden: " + error.message);
+      loadAgenten();
+      return loadAuftraege();
+    }
     const { error } = await sb.from("recherche_auftraege")
       .update({ status: "offen", wartet_auf: "nico", fortschritt: `Deine Wahl: ${wert}. Nico holt sie bald ab`, frage: null, optionen: null, empfehlung: null }).eq("id", id);
     if (error) return showErr("Antwort konnte nicht gespeichert werden: " + error.message);
