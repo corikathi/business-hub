@@ -373,7 +373,17 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   nav.menu button.tab .avatar{width:24px}
   nav.menu .nbadge{position:static;display:block;margin:0;font-size:9px;line-height:1;color:var(--accent)}
   nav.menu .nbadge.dot{position:absolute;top:6px;right:14px}
-  .stage{height:50vh;min-height:300px;margin:0 -10px}
+  .stage{height:auto;aspect-ratio:3/2;min-height:0;margin:0 -10px}
+  .stage canvas{position:absolute;inset:0}
+  .tag{font-size:9px;padding:3px 6px 4px;border-radius:6px}
+  .tag b, .tstack b{font-size:10px}
+  .tstack small{display:none}
+  .tag i{font-size:9px;padding:0 4px;margin-left:4px}
+  .rico{width:24px;height:24px}
+  .teambar{grid-template-columns:1fr;gap:0;margin-top:2px}
+  .tmember, .tmember:first-child{border-right:0;border-bottom:1px solid var(--line);padding:9px 4px}
+  .tmember:last-child{border-bottom:0}
+  .phasecol .assist{margin-bottom:7px}
   .hallo,.hico{position:relative}
   .hico{flex:none}
 }
@@ -701,7 +711,7 @@ sb.auth.onAuthStateChange((_event, session) => session ? showApp() : showLogin()
 
 // Handy: Begrüßung über das Büro, Arbeitszeit unter die Karten. Am PC bleiben beide oben im Menü.
 const handyMQ = matchMedia("(max-width:860px)");
-let hallo = null, uhr = null, navPlatz = null;
+let hallo = null, uhr = null, navPlatz = null, assistImBuero = false;
 function platzieren(){
   if (!hallo) {
     hallo = document.querySelector("nav.menu .hallo");
@@ -709,12 +719,17 @@ function platzieren(){
     if (!hallo || !uhr) return;
     navPlatz = hallo.parentNode;
   }
+  const spalte = document.querySelector("aside.phasecol");
+  const blase = $("assist");
   if (handyMQ.matches) {
     $("app").prepend(hallo);
-    document.querySelector("aside.phasecol").append(uhr);
+    spalte.append(uhr);
+    spalte.prepend(blase);
+    blase.style.transform = "";
   } else {
     navPlatz.prepend(hallo);
     navPlatz.append(uhr);
+    if (assistImBuero) $("labels").appendChild(blase);
   }
 }
 handyMQ.addEventListener("change", platzieren);
@@ -1795,9 +1810,11 @@ function buildScene(){
   chair(AS.x + 1.9, AS.z);
 
   // Die Meldung des Assistenten schwebt über seiner Figur
+  // Am Handy steht sie stattdessen als Karte über den anderen Karten (siehe platzieren)
   const bubble = $("assist");
-  $("labels").appendChild(bubble);
+  assistImBuero = true;
   roomTags.push({el: bubble, pos: new THREE.Vector3(AS.x, 2.6, AS.z)});
+  platzieren();
 
   // Bildschirme in den Räumen: zeigen die Zahlen aus dem Hub
   function screen(w, h, px){
@@ -2008,8 +2025,12 @@ function buildScene(){
     if (!w || !h) return;
     renderer.setSize(w, h, false);
     const a = w / h;
-    // Am Handy (schmal) zoomt die Kamera näher heran, sonst ist das Büro winzig
-    const s = w < 600 ? 27 : Math.max(18, 31 / a);
+    // Am Handy zielt die Kamera etwas weiter nach hinten, damit das Büro mittig in der flachen Bühne sitzt
+    const handy = w < 600;
+    const tx = handy ? -0.8 : 1.5, tz = handy ? -2.3 : 0;
+    cam.position.set(tx + 28.5, 26, tz + 30);
+    cam.lookAt(tx, 0, tz);
+    const s = handy ? Math.max(19.5, 30.4 / a) : Math.max(18, 31 / a);
     cam.left = -s * a / 2; cam.right = s * a / 2; cam.top = s / 2; cam.bottom = -s / 2;
     cam.updateProjectionMatrix();
   }
@@ -2017,6 +2038,7 @@ function buildScene(){
   layout();
   window.addEventListener("resize", layout);
 
+  const labelsEl = $("labels");
   let last = performance.now();
   function frame(t){
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
@@ -2066,7 +2088,7 @@ function buildScene(){
       el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
     };
     tags.forEach(tg => project(tg.pos, tg.el));
-    roomTags.forEach(tg => project(tg.pos, tg.el));
+    roomTags.forEach(tg => { if (tg.el.parentNode === labelsEl) project(tg.pos, tg.el); });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
