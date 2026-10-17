@@ -1731,8 +1731,7 @@ const homeT = {x: 1.5, z: 0};
 let nicoZoom = false, nicoBild = null, nicoSnapWanted = false;
 function nicoFokus(on){
   nicoZoom = on;
-  if (on) setTimeout(() => { nicoSnapWanted = true; }, 1200);
-  else nicoBild = null;
+  if (!on) nicoBild = null;
 }
 const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 // Nicos Stand aus der Datenbank (wird von Nico per Befehl geschrieben)
@@ -1798,7 +1797,7 @@ function renderNicoKarte(){
   const bild = nicoBild ? `<img class="nico-bild" alt="Nico im Büro" src="${nicoBild}">` : "";
   el.innerHTML = `
     <div class="nico-karte">
-      <div class="nico-gross">${bild || (nicoZoom ? `<div class="nico-laedt">Kamera fährt zu Nico …</div>` : fig)}</div>
+      <div class="nico-gross">${fig}</div>
       <div class="nico-infos">
         <b>Nico (Scout)</b>
         <span class="muted">Produktrecherche</span>
@@ -1811,20 +1810,22 @@ function renderNicoKarte(){
 // Nicos Fenster öffnet direkt neben ihm im 3D, ohne Zoom und ohne Bild
 let nicoScreenPos = () => null;   // wird im 3D-Teil gesetzt
 function openNico(){
-  nicoFokus(false);
-  nicoBild = null;
+  nicoFokus(true);
   renderNicoKarte();
   openPanel("nico");
   $("veil").classList.remove("on");
+  // Erst zoomt die Kamera auf Nico, danach steht das Fenster neben ihm
+  setTimeout(placeNicoDrawer, 1300);
+}
+function placeNicoDrawer(){
   const p = nicoScreenPos();
   const d = $("drawer");
-  if (p) {
-    const breite = Math.min(640, innerWidth - 24);
-    d.style.width = breite + "px";
-    d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
-    d.style.top = Math.max(12, Math.min(p.y - 60, innerHeight - 220)) + "px";
-    d.style.transform = "none";
-  }
+  if (!p || !nicoZoom) return;
+  const breite = Math.min(640, innerWidth - 24);
+  d.style.width = breite + "px";
+  d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
+  d.style.top = Math.max(12, Math.min(p.y - 60, innerHeight - 220)) + "px";
+  d.style.transform = "none";
 }
 
 // Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
