@@ -1812,16 +1812,20 @@ let nicoScreenPos = () => null;   // wird im 3D-Teil gesetzt
 function openNico(){
   nicoFokus(true);
   renderNicoKarte();
-  openPanel("nico");
-  $("veil").classList.remove("on");
-  // Erst zoomt die Kamera auf Nico, danach steht das Fenster neben ihm
-  setTimeout(placeNicoDrawer, 1300);
+  // Erst zoomt die Kamera auf Nico, danach erscheint das Fenster direkt an seiner Stelle
+  setTimeout(() => {
+    placeNicoDrawer();
+    openPanel("nico");
+    $("veil").classList.remove("on");
+    requestAnimationFrame(() => requestAnimationFrame(() => { $("drawer").style.transition = ""; }));
+  }, 1300);
 }
 function placeNicoDrawer(){
   const p = nicoScreenPos();
   const d = $("drawer");
-  if (!p || !nicoZoom) return;
+  if (!p) return;
   const breite = Math.min(640, innerWidth - 24);
+  d.style.transition = "none";
   d.style.width = breite + "px";
   d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
   d.style.top = Math.max(12, Math.min(p.y - 60, innerHeight - 220)) + "px";
