@@ -1386,13 +1386,11 @@ async function loadAuftraege(){
 
 // Themenvorschläge passend zum Markenbrief: Nachkauf, Textil oder Haushalt, nicht reguliert
 const VORSCHLAEGE = [
-  "Haushalt und Ordnung",
-  "Putz- und Spültücher",
-  "Haushaltstextilien",
-  "Wäsche und Waschen",
-  "Haustier-Alltag",
-  "Büro und Organisation",
-  "Bad und Badtextilien",
+  "Besser schlafen",
+  "Pilates und Yoga",
+  "Hundealltag",
+  "Bad und Haare",
+  "Küche mit Design",
 ];
 function renderVorschlaege(done){
   const offen = VORSCHLAEGE.filter(v => !done.has(v.toLowerCase()));
