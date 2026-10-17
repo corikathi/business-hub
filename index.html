@@ -1823,7 +1823,7 @@ function placeNicoDrawer(){
   const p = nicoScreenPos();
   const d = $("drawer");
   if (!p) return;
-  const breite = Math.min(640, innerWidth - 24);
+  const breite = Math.min(900, innerWidth - 24);
   d.style.transition = "none";
   d.style.width = breite + "px";
   d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
