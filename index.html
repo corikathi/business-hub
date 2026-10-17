@@ -129,6 +129,16 @@ button.nchip.late{border-color:var(--red)}
 .tinfo em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
 .tinfo b{white-space:nowrap}
 .tinfo small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Aufträge mit Knöpfen: Text oben, Knöpfe darunter, nichts überlagert sich */
+.agent-zeile{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start}
+.agent-zeile .athema{min-width:0;overflow-wrap:anywhere}
+.agent-knoepfe{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px}
+.agent-knoepfe button{padding:6px 10px;font-size:13px;border-radius:10px}
+.aufklapp{margin:6px 0}
+.aufklapp summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:700;padding:6px 0;list-style:none}
+.aufklapp summary::-webkit-details-marker{display:none}
+.aufklapp summary::before{content:"▸ ";}
+.aufklapp[open] summary::before{content:"▾ ";}
 .scout-zeile{display:grid;gap:2px;padding:4px 0 10px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .scout-zeile b{font-size:14px}
 .scout-zeile small{color:var(--muted);font-size:12px}
@@ -510,7 +520,10 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
         <h3 class="phase">Markenrichtung wählen</h3>
         <div class="vlist" id="richtungen"></div>
         <h3 class="phase">Aufträge</h3>
-        <div id="agentenList"></div>
+        <details class="aufklapp" open>
+          <summary>Aufträge</summary>
+          <div id="agentenList"></div>
+        </details>
         <div id="befehleList"></div>
       </section>
     </div>
@@ -548,7 +561,10 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
         <div class="note" style="margin-top:10px">Vorschläge passend zu deinem Markenbrief</div>
         <div id="vorschlaege" class="vlist"></div>
         <div class="note" style="margin-top:14px">Bisherige Recherchen</div>
-        <div id="auftraege"></div>
+        <details class="aufklapp">
+          <summary>Recherchen anzeigen</summary>
+          <div id="auftraege"></div>
+        </details>
         <div id="products" style="margin-top:8px"></div>
         <label class="importbtn">Rechercheergebnis importieren (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
         <div class="note" id="importInfo"></div>
@@ -1467,9 +1483,11 @@ async function loadAuftraege(){
   const laufend = (data || []).find(a => a.status === "laeuft");
   const bereit = (data || []).some(a => a.status === "offen");
   scoutWaving = bereit || ideen > 0;
-  teamInfo = { laufend: !!laufend, bereit, ideen };
+  teamInfo = { laufend: !!laufend, bereit, ideen, befehl: teamInfo.befehl || 0 };
   renderTeamStatus();
   const { data: offenBefehl } = await sb.from("agent_befehle").select("id").eq("erledigt", false);
+  teamInfo.befehl = (offenBefehl || []).length;
+  renderTeamStatus();
   scoutText = (offenBefehl || []).length
     ? "Befehl gesendet, wartet auf Abholung"
     : laufend
@@ -1653,6 +1671,7 @@ function renderTeamStatus(){
   const labels = {arbeitet: "Arbeitet", wartet: "Wartet", todo: "To-do", frei: "Faulenzt"};
   const zeilen = ZONES.map(z => {
     if (z.id === "scout") {
+      if (teamInfo.befehl) return {name: z.name, job: z.job, cls: "wartet", text: "Befehl gesendet, holt ihn bald ab"};
       if (teamInfo.laufend) return {name: z.name, job: z.job, cls: "arbeitet", text: "Recherche läuft"};
       if (teamInfo.bereit) return {name: z.name, job: z.job, cls: "wartet", text: "Auftrag bereit, wartet auf Start"};
       if (teamInfo.ideen > 0) return {name: z.name, job: z.job, cls: "wartet", text: `${teamInfo.ideen} Ideen noch ungeprüft`};
