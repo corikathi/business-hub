@@ -835,7 +835,7 @@ $("richtungen").addEventListener("click", async e => {
   if (await befehlSenden("scout", "start", thema, neu.id)) loadAgenten();
 });
 
-$("agentenList").addEventListener("click", async e => {
+async function agentAktion(e){
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
   const zeile = btn.closest(".agent-zeile");
@@ -853,7 +853,9 @@ $("agentenList").addEventListener("click", async e => {
   }
   loadAgenten();
   loadAuftraege();
-});
+}
+$("agentenList").addEventListener("click", agentAktion);
+$("auftraege").addEventListener("click", agentAktion);
 
 async function loadTeam(){
   const { data, error } = await sb.from("mitarbeiter").select("*");
@@ -1460,8 +1462,17 @@ async function loadAuftraege(){
   renderNext();
   if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Noch keine Recherche gestartet.</div>`; return; }
   const label = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+  // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
   $("auftraege").innerHTML = (data || []).map(a => `
-    <div class="auftrag"><span class="astatus ${a.status}">${label[a.status] || a.status}</span><span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span><small>${new Date(a.created_at).toLocaleDateString("de-DE")}</small></div>`).join("");
+    <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
+      <span class="astatus ${a.status}">${label[a.status] || a.status}</span>
+      <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
+      <span class="agent-knoepfe">
+        <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
+        <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
+        <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
+      </span>
+    </div>`).join("");
 }
 
 // Themenvorschläge passend zum Markenbrief: Nachkauf, Textil oder Haushalt, nicht reguliert
