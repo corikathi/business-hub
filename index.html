@@ -928,10 +928,21 @@ $("richtungen").addEventListener("click", async e => {
   const b = e.target.closest("[data-richtung]");
   if (!b) return;
   const thema = b.dataset.richtung;
+  // Läuft dieser Auftrag schon, nicht noch einmal anlegen
+  if (letzteAuftraege.some(a => a.thema === thema && a.status !== "fertig")) {
+    $("rHinweis").textContent = `„${thema}“ ist schon in Arbeit. Du siehst den Auftrag rechts.`;
+    return;
+  }
+  b.disabled = true;
+  $("rHinweis").textContent = `„${thema}“ wird angelegt …`;
   const { data: neu, error } = await sb.from("recherche_auftraege")
-    .insert({ thema, status: "offen", fortschritt: "Im Hub gewählt, wartet auf den Agenten" }).select("id").single();
-  if (error) return showErr("Richtung konnte nicht angelegt werden: " + error.message);
-  if (await befehlSenden("scout", "start", thema, neu.id)) loadAgenten();
+    .insert({ thema, status: "offen", wartet_auf: "nico", fortschritt: "Start angefordert, Nico holt den Auftrag bald ab" }).select("id").single();
+  b.disabled = false;
+  if (error) { $("rHinweis").textContent = ""; return showErr("Richtung konnte nicht angelegt werden: " + error.message); }
+  if (!(await befehlSenden("scout", "start", thema, neu.id))) return;
+  $("rHinweis").textContent = `„${thema}“ ist gestartet. Nico holt den Auftrag ca. ${naechstePruefung()} ab.`;
+  loadAgenten();
+  loadAuftraege();
 });
 
 async function agentAktion(e){
@@ -1895,8 +1906,9 @@ function placeNicoDrawer(){
 // Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
 function naechstePruefung(){
   const d = new Date();
-  const viertel = Math.ceil((d.getMinutes() + 0.01) / 15) * 15;
-  d.setMinutes(viertel + 5, 0, 0);
+  // Nico prüft alle 5 Minuten, dazu 2 Minuten Puffer
+  const naechste = Math.ceil((d.getMinutes() + 0.01) / 5) * 5;
+  d.setMinutes(naechste + 2, 0, 0);
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
 }
 
