@@ -139,6 +139,11 @@ button.nchip.late{border-color:var(--red)}
 .aufklapp summary::-webkit-details-marker{display:none}
 .aufklapp summary::before{content:"▸ ";}
 .aufklapp[open] summary::before{content:"▾ ";}
+/* Nico-Karte: links Nico und die neue Recherche, rechts seine Aufträge */
+.nico-layout{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:20px;align-items:start}
+.nico-rechts .auftrag{flex-wrap:wrap}
+.block[data-panel="nico"] > h2{display:none}
+@media (max-width:860px){ .nico-layout{grid-template-columns:1fr} }
 .nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
 .nico-gross svg{width:72px;height:auto;display:block}
 .nico-bild{width:150px;height:150px;border-radius:12px;object-fit:cover;display:block;border:1px solid var(--line)}
@@ -606,17 +611,23 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       </section>
       <section class="block" data-panel="nico">
         <h2>Nico (Scout)</h2>
-        <div id="nicoKarte"></div>
-        <h3 class="phase">Markenrichtung wählen</h3>
-        <div class="vlist" id="richtungen"></div>
-        <form class="grid2" id="rechercheForm">
-          <input id="rThema" placeholder="Eigenes Thema, z. B. Haushalt und Ordnung" required maxlength="120">
-          <button type="submit">Recherche starten</button>
-        </form>
-        <div class="note" id="rHinweis"></div>
-        <div id="vorschlaege" class="vlist"></div>
-        <h3 class="phase">Aufträge</h3>
-        <div id="auftraege"></div>
+        <div class="nico-layout">
+          <div class="nico-links">
+            <div id="nicoKarte"></div>
+            <h3 class="phase">Neue Recherche</h3>
+            <div class="vlist" id="richtungen"></div>
+            <form class="grid2" id="rechercheForm">
+              <input id="rThema" placeholder="Eigenes Thema, z. B. Haushalt und Ordnung" required maxlength="120">
+              <button type="submit">Recherche starten</button>
+            </form>
+            <div class="note" id="rHinweis"></div>
+            <div id="vorschlaege" hidden></div>
+          </div>
+          <div class="nico-rechts">
+            <h3 class="phase">Aufträge</h3>
+            <div id="auftraege"></div>
+          </div>
+        </div>
       </section>
       <section class="block">
         <h2>Entscheidungen</h2>
@@ -1529,7 +1540,7 @@ async function loadAuftraege(){
     : (scoutText || "Gerade nichts offen");
   const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(befehlText)}</small></div>`;
   // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
-  $("auftraege").innerHTML = scoutZeile + (data || []).map(a => `
+  $("auftraege").innerHTML = (data || []).map(a => `
     <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
       <span class="astatus ${a.status}">${label[a.status] || a.status}</span>
       <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
