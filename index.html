@@ -1808,7 +1808,24 @@ function renderNicoKarte(){
     ${nicoPlan()}`;
 }
 // Klick auf Nico öffnet diese Karte
-function openNico(){ nicoFokus(true); renderNicoKarte(); openPanel("nico"); }
+// Nicos Fenster öffnet direkt neben ihm im 3D, ohne Zoom und ohne Bild
+let nicoScreenPos = () => null;   // wird im 3D-Teil gesetzt
+function openNico(){
+  nicoFokus(false);
+  nicoBild = null;
+  renderNicoKarte();
+  openPanel("nico");
+  $("veil").classList.remove("on");
+  const p = nicoScreenPos();
+  const d = $("drawer");
+  if (p) {
+    const breite = Math.min(640, innerWidth - 24);
+    d.style.width = breite + "px";
+    d.style.left = Math.max(12, Math.min(p.x + 36, innerWidth - breite - 12)) + "px";
+    d.style.top = Math.max(12, Math.min(p.y - 60, innerHeight - 220)) + "px";
+    d.style.transform = "none";
+  }
+}
 
 // Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
 function naechstePruefung(){
@@ -2345,6 +2362,13 @@ function buildScene(){
   sceneLayout = layout;
   layout();
   window.addEventListener("resize", layout);
+  // Wo Nico gerade im Bild steht (Bildschirmkoordinaten), damit sein Fenster daneben aufgeht
+  nicoScreenPos = () => {
+    if (!walkers[0]) return null;
+    const v = new THREE.Vector3(walkers[0].g.position.x, 1.2, walkers[0].g.position.z).project(cam);
+    const r = $("scene").getBoundingClientRect();
+    return {x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height};
+  };
 
   const labelsEl = $("labels");
   let last = performance.now();
@@ -2443,7 +2467,9 @@ function openPanel(key){
 document.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.open)));
 function closeDrawer(){
   nicoFokus(false);
-  $("drawer").classList.remove("open"); $("veil").classList.remove("on");
+  const d = $("drawer");
+  d.style.width = ""; d.style.left = ""; d.style.top = ""; d.style.transform = "";
+  d.classList.remove("open"); $("veil").classList.remove("on");
   document.querySelectorAll("[data-open]").forEach(b => b.classList.remove("on"));
 }
 $("dClose").addEventListener("click", closeDrawer);
