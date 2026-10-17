@@ -419,8 +419,13 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
 /* Dashboard füllt am großen Bildschirm die ganze Höhe */
 @media (min-width:901px){
   header{top:18px;height:calc(100vh - 36px);overflow-y:auto}
-  nav.menu{flex:1}
-  nav.menu button.tab.profil{margin-top:auto}
+  header{gap:8px;padding-top:16px;padding-bottom:16px}
+  .hallo{padding:0 10px 8px;margin-bottom:0}
+  nav.menu{flex:1;gap:1px}
+  nav.menu button.tab{padding:7px 10px;font-size:14px}
+  .ngroup{margin:10px 10px 0;font-size:11px}
+  nav.menu button.tab.profil{margin-top:auto;padding-top:10px}
+  .uhrkarte.navuhr{padding-top:6px}
   .buehne{height:calc(100vh - 120px);min-height:0;grid-template-rows:auto minmax(0,1fr) auto;align-items:stretch;overflow:hidden;padding-top:64px}
   .buehne .greet{align-self:start}
   .buehne .stage{height:auto;min-height:300px}
