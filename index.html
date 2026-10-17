@@ -129,6 +129,9 @@ button.nchip.late{border-color:var(--red)}
 .tinfo em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
 .tinfo b{white-space:nowrap}
 .tinfo small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scout-zeile{display:grid;gap:2px;padding:4px 0 10px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.scout-zeile b{font-size:14px}
+.scout-zeile small{color:var(--muted);font-size:12px}
 .tmember.arbeitet em{color:var(--accent)}
 .tmember.wartet em{color:var(--warn)}
 .tmember.todo em{color:var(--ink)}
@@ -1462,8 +1465,10 @@ async function loadAuftraege(){
   renderNext();
   if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Noch keine Recherche gestartet.</div>`; return; }
   const label = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+  // Nico (Scout) steht über seinen Recherchen, mit demselben Status wie im Agenten-Panel
+  const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(scoutText || "Gerade nichts offen")}</small></div>`;
   // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
-  $("auftraege").innerHTML = (data || []).map(a => `
+  $("auftraege").innerHTML = scoutZeile + (data || []).map(a => `
     <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
       <span class="astatus ${a.status}">${label[a.status] || a.status}</span>
       <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
