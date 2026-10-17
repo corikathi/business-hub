@@ -144,6 +144,24 @@ button.nchip.late{border-color:var(--red)}
 .nico-rechts .auftrag{flex-wrap:wrap}
 .block[data-panel="nico"] > h2{display:none}
 @media (max-width:860px){ .nico-layout{grid-template-columns:1fr} }
+.nico-plan{margin-top:12px;display:grid;gap:10px}
+.plan-stufen{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.stufe{display:grid;justify-items:center;gap:3px;padding:8px 4px;border-radius:12px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.stufe span{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;border:2px solid var(--line)}
+.stufe small{font-size:11px;font-weight:700}
+.stufe.fertig{color:var(--ok)}
+.stufe.fertig span{background:var(--ok);border-color:var(--ok);color:#0f1216}
+.stufe.aktiv{color:var(--accent);border-color:var(--accent)}
+.stufe.aktiv span{border-color:var(--accent);color:var(--accent);animation:segpuls 1.4s ease-in-out infinite}
+.stufe.wartet{color:var(--warn)}
+.stufe.wartet span{border-color:var(--warn);color:var(--warn)}
+.plan-was{font-size:14px;font-weight:700}
+.plan-next{font-size:13px;color:var(--muted)}
+.plan-zaehler{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.plan-zaehler i{display:block;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.plan-zaehler b{display:block;height:100%;background:var(--accent)}
+.plan-zeit{font-size:11px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){ .stufe.aktiv span{animation:none} }
 .nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
 .nico-gross svg{width:72px;height:auto;display:block}
 .nico-bild{width:150px;height:150px;border-radius:12px;object-fit:cover;display:block;border:1px solid var(--line)}
@@ -836,7 +854,7 @@ let entscheidungen = [];
 let filter = "offen";
 
 async function loadAll(){
-  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget(), loadAgenten()]);
+  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget(), loadAgenten(), loadNicoStand()]);
 }
 
 // ---------- Agenten steuern: Knöpfe schreiben Befehle, der Agent holt sie ab ----------
@@ -1708,6 +1726,42 @@ function nicoFokus(on){
   else nicoBild = null;
 }
 const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+// Nicos Stand aus der Datenbank (wird von Nico per Befehl geschrieben)
+let nicoStand = null;
+async function loadNicoStand(){
+  const { data, error } = await sb.from("agent_stand").select("*").eq("id", "scout").maybeSingle();
+  if (error) return;
+  nicoStand = data;
+  renderNicoKarte();
+}
+const STUFEN_NAMEN = ["Ideen", "Marktcheck", "Kalkulation", "Tiefencheck"];
+function zeitVorher(iso){
+  if (!iso) return "noch nie";
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return "gerade eben";
+  if (min < 60) return `vor ${min} Min`;
+  return `vor ${Math.round(min / 60)} Std`;
+}
+function nicoPlan(){
+  const s = nicoStand || {};
+  const stufe = s.stufe || 0;
+  const aktiv = s.zustand === "arbeitet";
+  const seiten = s.seiten_datum === new Date().toISOString().slice(0, 10) ? (s.seiten_heute || 0) : 0;
+  const stufen = STUFEN_NAMEN.map((name, i) => {
+    const nr = i + 1;
+    const cls = nr < stufe ? "fertig" : (nr === stufe && aktiv ? "aktiv" : (nr === stufe ? "wartet" : ""));
+    return `<div class="stufe ${cls}"><span>${nr}</span><small>${name}</small></div>`;
+  }).join("");
+  const prozent = Math.min(100, Math.round(seiten / 60 * 100));
+  return `
+    <div class="nico-plan">
+      <div class="plan-stufen">${stufen}</div>
+      <div class="plan-was">${esc(s.was_tut || "Gerade nichts offen")}</div>
+      ${s.naechster_schritt ? `<div class="plan-next">Als Nächstes: ${esc(s.naechster_schritt)}</div>` : ""}
+      <div class="plan-zaehler"><span>Seiten heute: ${seiten} von 60</span><i><b style="width:${prozent}%"></b></i></div>
+      <small class="plan-zeit">Zuletzt aktiv: ${zeitVorher(s.letzte_aktivitaet)}</small>
+    </div>`;
+}
 function renderNicoKarte(){
   const el = $("nicoKarte");
   if (!el) return;
@@ -1725,7 +1779,7 @@ function renderNicoKarte(){
         <div class="nico-status ${esc(status)}">${esc(was)}</div>
       </div>
     </div>
-    `;
+    ${nicoPlan()}`;
 }
 // Klick auf Nico öffnet diese Karte
 function openNico(){ nicoFokus(true); renderNicoKarte(); openPanel("nico"); }
