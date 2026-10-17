@@ -697,6 +697,27 @@ $("loginForm").addEventListener("submit", async e => {
 $("logout").addEventListener("click", () => sb.auth.signOut());
 sb.auth.onAuthStateChange((_event, session) => session ? showApp() : showLogin());
 
+// Handy: Begrüßung über das Büro, Arbeitszeit unter die Karten. Am PC bleiben beide oben im Menü.
+const handyMQ = matchMedia("(max-width:860px)");
+let hallo = null, uhr = null, navPlatz = null;
+function platzieren(){
+  if (!hallo) {
+    hallo = document.querySelector("nav.menu .hallo");
+    uhr = document.querySelector("nav.menu .navuhr");
+    if (!hallo || !uhr) return;
+    navPlatz = hallo.parentNode;
+  }
+  if (handyMQ.matches) {
+    $("app").prepend(hallo);
+    document.querySelector("aside.phasecol").append(uhr);
+  } else {
+    navPlatz.prepend(hallo);
+    navPlatz.append(uhr);
+  }
+}
+handyMQ.addEventListener("change", platzieren);
+platzieren();
+
 // ---------- Begrüßung ----------
 function renderGreeting(){
   const now = new Date();
