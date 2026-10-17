@@ -1802,7 +1802,7 @@ function zeigeNicoHinweis(){
     el.innerHTML = `<div><b>Du bist dran: ${esc(anDich.thema)}</b><span>${esc(anDich.fortschritt || "Nico braucht deine Entscheidung")}</span></div>
       <button type="button" class="ghost" id="nicoHinweisOeffnen">Öffnen</button>`;
     el.hidden = false;
-  } else if (s && s.zustand === "wartet" && s.naechster_schritt) {
+  } else if (s && s.zustand === "wartet" && s.naechster_schritt && !letzteAuftraege.some(a => a.wartet_auf === "nico")) {
     el.innerHTML = `<div><b>Nico wartet auf dich</b><span>${esc(s.naechster_schritt)}</span></div>
       <button type="button" class="ghost" id="nicoHinweisOeffnen">Öffnen</button>`;
     el.hidden = false;
