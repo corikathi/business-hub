@@ -1464,7 +1464,10 @@ async function loadAuftraege(){
   scoutWaving = bereit || ideen > 0;
   teamInfo = { laufend: !!laufend, bereit, ideen };
   renderTeamStatus();
-  scoutText = laufend
+  const { data: offenBefehl } = await sb.from("agent_befehle").select("id").eq("erledigt", false);
+  scoutText = (offenBefehl || []).length
+    ? "Befehl gesendet, wartet auf Abholung"
+    : laufend
     ? `Recherche läuft: ${laufend.fortschritt || "gleich geht es los"}`
     : bereit
       ? "Auftrag bereit, Klick für Details"
