@@ -1477,7 +1477,12 @@ async function loadAuftraege(){
   if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Noch keine Recherche gestartet.</div>`; return; }
   const label = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
   // Nico (Scout) steht über seinen Recherchen, mit demselben Status wie im Agenten-Panel
-  const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(scoutText || "Gerade nichts offen")}</small></div>`;
+  // Solange ein Befehl im Hub auf Abholung wartet, sagt die Zeile das sofort
+  const { data: offeneBefehle } = await sb.from("agent_befehle").select("id").eq("erledigt", false);
+  const befehlText = (offeneBefehle || []).length
+    ? `Befehl gesendet, Nico holt ihn bald ab (${offeneBefehle.length} wartend)`
+    : (scoutText || "Gerade nichts offen");
+  const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(befehlText)}</small></div>`;
   // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
   $("auftraege").innerHTML = scoutZeile + (data || []).map(a => `
     <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
