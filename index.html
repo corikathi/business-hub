@@ -129,6 +129,25 @@ button.nchip.late{border-color:var(--red)}
 .tinfo em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
 .tinfo b{white-space:nowrap}
 .tinfo small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Auftrag als Karte: Name, Etikett, Balken mit 4 Stufen, ein Satz, passende Knöpfe */
+.auftrag-karte{display:grid;gap:7px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--bg);margin-bottom:8px}
+.auftrag-karte.du{border-color:var(--warn)}
+.auftrag-karte.arbeitet{border-color:var(--accent)}
+.auftrag-karte.fertig,.auftrag-karte.verworfen{opacity:.75}
+.ak-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ak-kopf b{font-size:15px}
+.ak-etikett{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.ak-etikett.du{color:#0f1216;background:var(--warn);border-color:var(--warn)}
+.ak-etikett.arbeitet{color:var(--accent);border-color:var(--accent)}
+.ak-etikett.fertig{color:var(--ok);border-color:var(--ok)}
+.ak-balken{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.ak-balken i{height:7px;border-radius:999px;background:var(--line)}
+.ak-balken i.voll{background:var(--accent)}
+.auftrag-karte.du .ak-balken i.voll{background:var(--warn)}
+.auftrag-karte.fertig .ak-balken i.voll{background:var(--ok)}
+.ak-stufe{font-size:11px;color:var(--muted)}
+.ak-text{font-size:13px}
+.ak-text b{color:var(--warn)}
 /* Aufträge mit Knöpfen: Text oben, Knöpfe darunter, nichts überlagert sich */
 .agent-zeile{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start}
 .agent-zeile .athema{min-width:0;overflow-wrap:anywhere}
@@ -883,11 +902,10 @@ async function loadAgenten(){
   const { data: auftraege, error: e1 } = await sb.from("recherche_auftraege").select("*").order("created_at", { ascending: false }).limit(20);
   if (e1) return showErr("Aufträge konnten nicht geladen werden: " + e1.message);
   const { data: befehle, error: e2 } = await sb.from("agent_befehle").select("*").eq("erledigt", false).order("created_at", { ascending: false });
-  $("agentenList").innerHTML = (auftraege || []).map(a => `
-    <div class="auftrag">
-      <span class="astatus ${esc(a.status)}">${AGENT_STATUS[a.status] || esc(a.status)}</span>
-      <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
-    </div>`).join("") || `<div class="empty">Noch keine Aufträge.</div>`;
+  // Nur Anzeige, gleiche Karten wie bei Nico, ohne Knöpfe
+  $("agentenList").innerHTML = (auftraege || []).filter(a => a.status !== "fertig")
+    .sort((a, b) => (b.stufe || 0) - (a.stufe || 0) || zustandRang(a) - zustandRang(b))
+    .map(a => auftragKarte(a, false)).join("") || `<div class="empty">Keine offenen Aufträge.</div>`;
   if (e2) {
     $("befehleList").innerHTML = `<div class="empty">Befehle sind noch nicht eingerichtet: schema_agent_befehle.sql im Supabase-SQL-Editor ausführen.</div>`;
   } else {
@@ -911,27 +929,27 @@ $("richtungen").addEventListener("click", async e => {
 async function agentAktion(e){
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
-  const zeile = btn.closest(".agent-zeile");
+  const zeile = btn.closest(".auftrag-karte, .agent-zeile");
   const id = zeile.dataset.id, thema = zeile.dataset.thema;
   const act = btn.dataset.act;
-  if (act === "fertig") {
+  if (act === "ergebnis") {
+    closeDrawer();
+    return openPanel("produkte");
+  }
+  if (act === "fertig" || act === "verwerfen") {
+    const text = act === "fertig" ? "Von Corinna abgeschlossen" : "Verworfen von Corinna";
     const { error } = await sb.from("recherche_auftraege")
-      .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: "Von Corinna abgeschlossen" }).eq("id", id);
+      .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: text, wartet_auf: null }).eq("id", id);
     if (error) return showErr("Auftrag konnte nicht abgeschlossen werden: " + error.message);
-  } else if (act === "verwerfen") {
-    const { error } = await sb.from("recherche_auftraege")
-      .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: "Verworfen von Corinna" }).eq("id", id);
-    if (error) return showErr("Auftrag konnte nicht verworfen werden: " + error.message);
-  } else if (act === "weiter") {
-    const { error } = await sb.from("recherche_auftraege")
-      .update({ status: "offen", fortschritt: "Weiter prüfen, wartet auf den Agenten" }).eq("id", id);
-    if (error) return showErr("Auftrag konnte nicht geändert werden: " + error.message);
-    if (!(await befehlSenden("scout", "start", thema, id))) return;
   } else {
-    const text = act === "start" ? "Start angefordert, wartet auf den Agenten" : "Stopp angefordert, wartet auf den Agenten";
-    const { error } = await sb.from("recherche_auftraege").update({ status: "offen", fortschritt: text }).eq("id", id);
+    // Starten und Weiter: jetzt ist Nico dran. Stoppen: dann bist du wieder dran.
+    const nicoDran = act === "start" || act === "weiter";
+    const text = act === "stopp" ? "Gestoppt. Mit Starten geht es weiter."
+      : act === "weiter" ? "Weiter, Nico holt den Auftrag bald ab" : "Start angefordert, Nico holt den Auftrag bald ab";
+    const { error } = await sb.from("recherche_auftraege")
+      .update({ status: "offen", fortschritt: text, wartet_auf: nicoDran ? "nico" : "corinna" }).eq("id", id);
     if (error) return showErr("Auftrag konnte nicht geändert werden: " + error.message);
-    if (!(await befehlSenden("scout", act, thema, id))) return;
+    if (!(await befehlSenden("scout", act === "weiter" ? "start" : act, thema, id))) return;
   }
   loadAgenten();
   loadAuftraege();
@@ -1566,19 +1584,48 @@ async function loadAuftraege(){
     ? `Befehl gesendet, Nico prüft ca. ${naechstePruefung()} (${offeneBefehle.length} wartend)`
     : (scoutText || "Gerade nichts offen");
   const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(befehlText)}</small></div>`;
-  // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
-  $("auftraege").innerHTML = (data || []).map(a => `
-    <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
-      <span class="astatus ${a.status}">${label[a.status] || a.status}</span>
-      <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
-      <span class="agent-knoepfe">
-        <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
-        <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
-        <button type="button" class="ghost" data-act="weiter" ${a.status === "fertig" ? "disabled" : ""}>Weiter prüfen</button>
-        <button type="button" class="ghost" data-act="verwerfen" ${a.status === "fertig" ? "disabled" : ""}>Verwerfen</button>
-        <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
-      </span>
-    </div>`).join("");
+  // Aufträge als Karten: am weitesten fortgeschritten oben, fertige zusammengeklappt unten
+  const aktiv = (data || []).filter(a => a.status !== "fertig")
+    .sort((a, b) => (b.stufe || 0) - (a.stufe || 0) || zustandRang(a) - zustandRang(b));
+  const erledigt = (data || []).filter(a => a.status === "fertig");
+  $("auftraege").innerHTML = (aktiv.map(a => auftragKarte(a, true)).join("") || `<div class="empty">Keine offenen Aufträge.</div>`)
+    + (erledigt.length ? `<details class="aufklapp"><summary>Fertig und verworfen (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
+  zeigeNicoHinweis();
+}
+
+// Zustand eines Auftrags: wer ist dran?
+function auftragZustand(a){
+  if (a.status === "laeuft") return "arbeitet";
+  if (a.status === "fertig") return /^Verworfen/i.test(a.fortschritt || "") ? "verworfen" : "fertig";
+  // Ältere Einträge ohne Angabe: am Text erkennen, ob Corinna gefragt ist
+  const anDich = a.wartet_auf === "corinna" || (!a.wartet_auf && /Corinna|deine (Wahl|Entscheidung)/i.test(a.fortschritt || ""));
+  if (anDich) return "du";
+  if (a.wartet_auf === "nico") return "nico";
+  return (a.stufe || 0) > 0 ? "nico" : "neu";
+}
+function zustandRang(a){ return {du: 0, arbeitet: 1, nico: 2, neu: 3}[auftragZustand(a)] ?? 4; }
+const ZUSTAND_TEXT = {arbeitet: "Arbeitet", du: "Du bist dran", nico: "Wartet auf Nico", neu: "Nicht gestartet", fertig: "Fertig", verworfen: "Verworfen"};
+
+function auftragKarte(a, mitKnoepfen){
+  const z = auftragZustand(a);
+  const stufe = a.stufe || 0;
+  const balken = STUFEN_NAMEN.map((name, i) => `<i class="${i + 1 <= stufe ? "voll" : ""}" title="${name}"></i>`).join("");
+  const knoepfe = !mitKnoepfen ? "" : ({
+    du: `<button type="button" data-act="weiter">Weiter</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
+    arbeitet: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
+    nico: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
+    neu: `<button type="button" data-act="start">Starten</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
+    fertig: `<button type="button" class="ghost" data-act="ergebnis">Ergebnis ansehen</button>`,
+    verworfen: "",
+  })[z];
+  return `
+    <div class="auftrag-karte ${z}" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
+      <div class="ak-kopf"><b>${esc(a.thema)}</b><span class="ak-etikett ${z}">${ZUSTAND_TEXT[z]}</span></div>
+      <div class="ak-balken">${balken}</div>
+      <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
+      ${a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : ""}
+      ${knoepfe ? `<div class="agent-knoepfe">${knoepfe}</div>` : ""}
+    </div>`;
 }
 
 // Themenvorschläge passend zum Markenbrief: Nachkauf, Textil oder Haushalt, nicht reguliert
@@ -1748,7 +1795,13 @@ function zeigeNicoHinweis(){
   const el = $("nicoHinweis");
   const s = nicoStand;
   if (!el) return;
-  if (s && s.zustand === "wartet" && s.naechster_schritt) {
+  // Ein Auftrag, bei dem du dran bist, hat Vorrang vor Nicos allgemeinem Stand
+  const anDich = letzteAuftraege.find(a => a.status !== "fertig" && auftragZustand(a) === "du");
+  if (anDich) {
+    el.innerHTML = `<div><b>Du bist dran: ${esc(anDich.thema)}</b><span>${esc(anDich.fortschritt || "Nico braucht deine Entscheidung")}</span></div>
+      <button type="button" class="ghost" id="nicoHinweisOeffnen">Öffnen</button>`;
+    el.hidden = false;
+  } else if (s && s.zustand === "wartet" && s.naechster_schritt) {
     el.innerHTML = `<div><b>Nico wartet auf dich</b><span>${esc(s.naechster_schritt)}</span></div>
       <button type="button" class="ghost" id="nicoHinweisOeffnen">Öffnen</button>`;
     el.hidden = false;
