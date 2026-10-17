@@ -1481,8 +1481,9 @@ function renderVorschlaege(done){
 $("vorschlaege").addEventListener("click", e => {
   const b = e.target.closest(".vchip");
   if (!b) return;
+  // Ein Klick startet die Recherche direkt, so wie die Knöpfe im Agenten-Panel
   $("rThema").value = b.dataset.thema;
-  $("rThema").focus();
+  $("rechercheForm").requestSubmit();
 });
 
 $("rechercheForm").addEventListener("submit", async e => {
