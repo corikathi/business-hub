@@ -819,7 +819,14 @@ function showApp(){
   if (sceneLayout) sceneLayout();
   loadAll();
   startZeit();
+  // Alle 60 Sekunden neu laden, damit Nicos Stand von selbst erscheint (nur einmal starten)
+  if (!autoAktualisieren) {
+    autoAktualisieren = setInterval(() => {
+      if (document.visibilityState === "visible" && !$("app").hidden) loadAll();
+    }, 60000);
+  }
 }
+let autoAktualisieren = null;
 
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
