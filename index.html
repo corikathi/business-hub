@@ -1625,8 +1625,12 @@ async function loadAuftraege(){
   const aktiv = (data || []).filter(a => a.status !== "fertig")
     .sort((a, b) => (b.stufe || 0) - (a.stufe || 0) || zustandRang(a) - zustandRang(b));
   const erledigt = (data || []).filter(a => a.status === "fertig");
-  $("auftraege").innerHTML = (aktiv.map(a => auftragKarte(a, true)).join("") || `<div class="empty">Keine offenen Aufträge.</div>`)
-    + (erledigt.length ? `<details class="aufklapp"><summary>Fertig und verworfen (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
+  // Drei Gruppen: was auf dich wartet, was bei Nico läuft, und der Rest zusammengeklappt
+  const warteAufDich = aktiv.filter(a => auftragZustand(a) === "du");
+  const beiNico = aktiv.filter(a => auftragZustand(a) !== "du");
+  const gruppe = (titel, liste) => liste.length ? `<h3 class="phase">${titel} (${liste.length})</h3>` + liste.map(a => auftragKarte(a, true)).join("") : "";
+  $("auftraege").innerHTML = (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Keine offenen Aufträge.</div>`;
+  $("auftraege").innerHTML += (erledigt.length ? `<details class="aufklapp"><summary>Fertig und verworfen (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
   zeigeNicoHinweis();
 }
 
