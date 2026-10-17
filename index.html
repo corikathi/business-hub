@@ -139,6 +139,15 @@ button.nchip.late{border-color:var(--red)}
 .aufklapp summary::-webkit-details-marker{display:none}
 .aufklapp summary::before{content:"▸ ";}
 .aufklapp[open] summary::before{content:"▾ ";}
+.nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
+.nico-gross svg{width:72px;height:auto;display:block}
+.nico-infos{display:grid;gap:3px;min-width:0}
+.nico-infos b{font-size:18px;font-weight:800}
+.nico-infos .muted{font-size:12px}
+.nico-status{margin-top:6px;font-size:14px;font-weight:700}
+.nico-status.arbeitet{color:var(--accent)}
+.nico-status.wartet{color:var(--warn)}
+.nico-status.frei{color:var(--muted)}
 .scout-zeile{display:grid;gap:2px;padding:4px 0 10px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .scout-zeile b{font-size:14px}
 .scout-zeile small{color:var(--muted);font-size:12px}
@@ -607,6 +616,10 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
           <button type="submit">Speichern</button>
           <div class="err" id="wErr"></div>
         </form>
+      </section>
+      <section class="block" data-panel="nico">
+        <h2>Nico (Scout)</h2>
+        <div id="nicoKarte"></div>
       </section>
       <section class="block">
         <h2>Entscheidungen</h2>
@@ -1489,6 +1502,7 @@ $("products").addEventListener("click", async e => {
 async function loadAuftraege(){
   const { data, error } = await sb.from("recherche_auftraege").select("*").order("created_at", { ascending: false }).limit(10);
   if (error) return showProdErr("Recherche-Aufträge konnten nicht geladen werden: " + error.message);
+  letzteAuftraege = data || [];
   renderVorschlaege(new Set((data || []).map(a => String(a.thema).toLowerCase())));
   offeneRecherchen = (data || []).filter(a => a.status !== "fertig").length;
   const gepr = new Set((data || []).map(a => String(a.thema).toLowerCase()));
@@ -1679,6 +1693,33 @@ let scoutWaving = false;   // Nico winkt, wenn ein Auftrag offen ist oder Ideen 
 let scoutText = "";
 let teamInfo = {laufend: false, bereit: false, ideen: 0};
 
+// Nico-Karte: große Figur, Name, was er gerade tut und seine letzten Aufträge
+let nicoZeile = null;
+let letzteAuftraege = [];
+const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+function renderNicoKarte(){
+  const el = $("nicoKarte");
+  if (!el) return;
+  const z = ZONES[0];
+  const fig = pixFigure({...ASSIST_COLORS, H: z.hair, S: z.skin, T: z.top, A: z.top, P: z.pants});
+  const status = nicoZeile ? nicoZeile.cls : "frei";
+  const was = nicoZeile ? nicoZeile.text : "Gerade nichts offen";
+  const liste = letzteAuftraege.slice(0, 5).map(a => `<div class="auftrag"><span class="astatus ${esc(a.status)}">${AUFTRAG_TEXT[a.status] || esc(a.status)}</span><span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span></div>`).join("");
+  el.innerHTML = `
+    <div class="nico-karte">
+      <div class="nico-gross">${fig}</div>
+      <div class="nico-infos">
+        <b>Nico (Scout)</b>
+        <span class="muted">Produktrecherche</span>
+        <div class="nico-status ${esc(status)}">${esc(was)}</div>
+      </div>
+    </div>
+    <h3 class="phase">Letzte Aufträge</h3>
+    ${liste || `<div class="empty">Noch keine Aufträge.</div>`}`;
+}
+// Klick auf Nico öffnet diese Karte
+function openNico(){ renderNicoKarte(); openPanel("nico"); }
+
 // Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
 function naechstePruefung(){
   const d = new Date();
@@ -1703,6 +1744,8 @@ function renderTeamStatus(){
       ? {name: z.name, job: z.job, cls: "todo", text: `${offen.length} offen · als Nächstes: ${offen[0].title}`}
       : {name: z.name, job: z.job, cls: "frei", text: "Nichts offen"};
   });
+  nicoZeile = zeilen[0];
+  renderNicoKarte();
   $("teamStatus").innerHTML = zeilen.map((r, i) => {
     const z = ZONES[i];
     const fig = pixFigure({...ASSIST_COLORS, H: z.hair, S: z.skin, T: z.top, A: z.top, P: z.pants});
@@ -1712,7 +1755,7 @@ function renderTeamStatus(){
 $("teamStatus").addEventListener("click", e => {
   const b = e.target.closest(".tmember");
   if (!b) return;
-  if (b.dataset.id === "scout") openPanel("produkte");
+  if (b.dataset.id === "scout") openNico();
   else { setFilter("offen"); openPanel("aufgaben"); }
 });
 let lastStats = {done:0, open:0, products:0, wissen:0};
@@ -2080,7 +2123,7 @@ function buildScene(){
     el.style.pointerEvents = "auto";
     el.style.cursor = "pointer";
     el.addEventListener("click", () => {
-      if (p.id === "scout") openPanel("produkte");
+      if (p.id === "scout") openNico();
       else if (p.id === "chef") { setFilter("offen"); openPanel("aufgaben"); }
       else openPanel("team");
     });
@@ -2185,7 +2228,7 @@ function buildScene(){
       const t = findTarget(h.object);
       if (!t) continue;
       if (t === "wissen") openPanel("wissen");
-      else if (t === "scout") openPanel("produkte");
+      else if (t === "scout") openNico();
       else { setFilter("offen"); openPanel("aufgaben"); }
       break;
     }
@@ -2272,7 +2315,7 @@ document.querySelectorAll(".nico[data-icon]").forEach(el => { el.innerHTML = pix
 $("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb3", T: "#e7d7b8", A: "#e7d7b8", P: "#5a5046"}, CORINNA_MAP);
 
 // ---------- Panels ----------
-const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
+const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Nico (Scout)":"nico","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
 document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
 function openPanel(key){
   document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
