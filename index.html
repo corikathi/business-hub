@@ -1332,7 +1332,7 @@ $("importFile").addEventListener("change", async e => {
   // Passenden offenen Auftrag als erledigt markieren
   if (data.auftrag) {
     await sb.from("recherche_auftraege").update({ status: "fertig", erledigt_am: new Date().toISOString() })
-      .eq("thema", data.auftrag).eq("status", "offen");
+      .eq("thema", data.auftrag).neq("status", "fertig");
     loadAuftraege();
   }
   loadProducts();
