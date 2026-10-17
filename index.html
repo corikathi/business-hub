@@ -410,12 +410,12 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   header{top:18px;height:calc(100vh - 36px);overflow-y:auto}
   nav.menu{flex:1}
   nav.menu button.tab.profil{margin-top:auto}
-  .buehne{min-height:calc(100vh - 36px);grid-template-rows:auto minmax(440px,1fr) auto;align-items:stretch}
+  .buehne{height:calc(100vh - 36px);min-height:0;grid-template-rows:auto minmax(0,1fr) auto;align-items:stretch;overflow:hidden}
   .buehne .greet{align-self:start}
   .buehne .stage{height:auto;min-height:440px}
   .stage canvas{position:absolute;inset:0}
   .buehne .teambar{align-self:end;padding-bottom:4px}
-  .phasecol{align-self:stretch;display:flex;flex-direction:column}
+  .phasecol{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin}
   .phasecol .next{flex:1;display:flex;flex-direction:column;gap:12px}
   .phasecol .next .acard{flex:1 1 auto;padding:14px 16px;gap:6px;border-radius:16px}
 }
