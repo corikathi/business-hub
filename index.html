@@ -433,6 +433,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       <button class="tab" data-open="wissen"><span class="nico" data-icon="server"></span>Gedächtnis<em class="nbadge" id="nbWissen"></em></button>
       <button class="tab" data-open="entscheidungen"><span class="nico" data-icon="waage"></span>Entscheidungen</button>
       <button class="tab" data-open="team"><span class="nico" data-icon="team"></span>Team</button>
+      <button class="tab" data-open="agenten"><span class="nico" data-icon="team"></span>Agenten</button>
       <div class="ngroup">Übersicht</div>
       <button class="tab" data-open="fortschritt"><span class="nico" data-icon="treppe"></span>Fortschritt</button>
       <button class="tab profil" data-open="einstellungen"><span class="avatar" id="navAvatar"></span><span class="ptext">Corinna<small>Einstellungen</small></span></button>
@@ -498,6 +499,15 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       <section class="block">
         <h2>Team</h2>
         <ul class="team" id="team"></ul>
+      </section>
+      <section class="block">
+        <h2>Agenten</h2>
+        <p class="note">Die Knöpfe schreiben nur Befehle. Gearbeitet wird erst, wenn der Agent sie abholt.</p>
+        <h3 class="phase">Markenrichtung wählen</h3>
+        <div class="vlist" id="richtungen"></div>
+        <h3 class="phase">Aufträge</h3>
+        <div id="agentenList"></div>
+        <div id="befehleList"></div>
       </section>
     </div>
 
@@ -772,8 +782,78 @@ let entscheidungen = [];
 let filter = "offen";
 
 async function loadAll(){
-  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget()]);
+  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget(), loadAgenten()]);
 }
+
+// ---------- Agenten steuern: Knöpfe schreiben Befehle, der Agent holt sie ab ----------
+// Der Hub setzt nie selbst „arbeitet“. Das passiert erst, wenn der Agent den Befehl ausführt.
+const RICHTUNGEN = ["Besser schlafen", "Pilates und Yoga", "Hundealltag", "Bad und Haare", "Küche mit Design"];
+const AGENT_STATUS = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+
+function renderRichtungen(){
+  $("richtungen").innerHTML = RICHTUNGEN.map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
+}
+
+async function befehlSenden(agent, aktion, thema, auftragId){
+  const { error } = await sb.from("agent_befehle").insert({ agent, aktion, thema, auftrag_id: auftragId || null });
+  if (error) { showErr("Befehl konnte nicht gespeichert werden: " + error.message); return false; }
+  return true;
+}
+
+async function loadAgenten(){
+  renderRichtungen();
+  const { data: auftraege, error: e1 } = await sb.from("recherche_auftraege").select("*").order("created_at", { ascending: false }).limit(20);
+  if (e1) return showErr("Aufträge konnten nicht geladen werden: " + e1.message);
+  const { data: befehle, error: e2 } = await sb.from("agent_befehle").select("*").eq("erledigt", false).order("created_at", { ascending: false });
+  $("agentenList").innerHTML = (auftraege || []).map(a => `
+    <div class="auftrag agent-zeile" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
+      <span class="astatus ${esc(a.status)}">${AGENT_STATUS[a.status] || esc(a.status)}</span>
+      <span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span>
+      <span class="agent-knoepfe">
+        <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
+        <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
+        <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
+      </span>
+    </div>`).join("") || `<div class="empty">Noch keine Aufträge. Wähl oben eine Markenrichtung.</div>`;
+  if (e2) {
+    $("befehleList").innerHTML = `<div class="empty">Befehle sind noch nicht eingerichtet: schema_agent_befehle.sql im Supabase-SQL-Editor ausführen.</div>`;
+  } else {
+    $("befehleList").innerHTML = (befehle || []).length
+      ? `<h3 class="phase">Wartet auf den Agenten</h3>` + befehle.map(b => `
+        <div class="auftrag"><span>${esc(b.agent)}: ${esc(b.aktion)} „${esc(b.thema || "")}“</span><small>${new Date(b.created_at).toLocaleString("de-DE")}</small></div>`).join("")
+      : "";
+  }
+}
+
+$("richtungen").addEventListener("click", async e => {
+  const b = e.target.closest("[data-richtung]");
+  if (!b) return;
+  const thema = b.dataset.richtung;
+  const { data: neu, error } = await sb.from("recherche_auftraege")
+    .insert({ thema, status: "offen", fortschritt: "Im Hub gewählt, wartet auf den Agenten" }).select("id").single();
+  if (error) return showErr("Richtung konnte nicht angelegt werden: " + error.message);
+  if (await befehlSenden("scout", "start", thema, neu.id)) loadAgenten();
+});
+
+$("agentenList").addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const zeile = btn.closest(".agent-zeile");
+  const id = zeile.dataset.id, thema = zeile.dataset.thema;
+  const act = btn.dataset.act;
+  if (act === "fertig") {
+    const { error } = await sb.from("recherche_auftraege")
+      .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: "Von Corinna abgeschlossen" }).eq("id", id);
+    if (error) return showErr("Auftrag konnte nicht abgeschlossen werden: " + error.message);
+  } else {
+    const text = act === "start" ? "Start angefordert, wartet auf den Agenten" : "Stopp angefordert, wartet auf den Agenten";
+    const { error } = await sb.from("recherche_auftraege").update({ status: "offen", fortschritt: text }).eq("id", id);
+    if (error) return showErr("Auftrag konnte nicht geändert werden: " + error.message);
+    if (!(await befehlSenden("scout", act, thema, id))) return;
+  }
+  loadAgenten();
+  loadAuftraege();
+});
 
 async function loadTeam(){
   const { data, error } = await sb.from("mitarbeiter").select("*");
@@ -2111,7 +2191,7 @@ document.querySelectorAll(".nico[data-icon]").forEach(el => { el.innerHTML = pix
 $("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb3", T: "#e7d7b8", A: "#e7d7b8", P: "#5a5046"}, CORINNA_MAP);
 
 // ---------- Panels ----------
-const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
+const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
 document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
 function openPanel(key){
   document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
