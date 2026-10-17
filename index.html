@@ -185,6 +185,7 @@ button.nchip.late{border-color:var(--red)}
 .nico-gross svg{width:72px;height:auto;display:block}
 .nico-hinweis{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(245,194,107,.08);border:1px solid var(--warn);border-radius:14px;padding:12px 16px}
 .nico-hinweis[hidden]{display:none}
+#labels > .nico-hinweis{position:absolute;left:12px;bottom:12px;max-width:360px;pointer-events:auto;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4);background:var(--panel)}
 .nico-hinweis b{display:block;color:var(--warn);font-size:14px}
 .nico-hinweis span{font-size:14px}
 .nico-laedt{width:150px;height:150px;border-radius:12px;display:grid;place-items:center;text-align:center;font-size:12px;color:var(--muted);background:var(--bg);border:1px dashed var(--line)}
@@ -1812,6 +1813,8 @@ function zeigeNicoHinweis(){
 $("nicoHinweis") && $("nicoHinweis").addEventListener("click", e => {
   if (e.target.closest("#nicoHinweisOeffnen")) openNico();
 });
+// Der Hinweis sitzt unten links in der Bühne, über dem Büro, nicht mehr oben
+$("labels") && $("nicoHinweis") && $("labels").appendChild($("nicoHinweis"));
 const STUFEN_NAMEN = ["Ideen", "Marktcheck", "Kalkulation", "Tiefencheck"];
 function zeitVorher(iso){
   if (!iso) return "noch nie";
