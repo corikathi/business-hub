@@ -1,0 +1,2073 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Business Hub</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Press+Start+2P&display=swap">
+<style>
+/* Business Hub: dunkel, kühl, ohne Kästen */
+:root{
+  --bg:#0c1016; --panel:#131923; --ink:#e4ebf3; --muted:#7d8898; --line:#1f2a36;
+  --accent:#5fd4ff; --ok:#6fe0b0; --warn:#f5c26b; --red:#ff7a7a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Nunito",system-ui,sans-serif;font-size:15px;line-height:1.45;padding:18px;min-height:100vh}
+h1,h2{margin:0;font-weight:800}
+h1{font-size:22px;letter-spacing:.3px}
+h2{font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);margin-bottom:12px;font-family:"Nunito",system-ui,sans-serif;font-weight:800}
+.muted{color:var(--muted)}
+.wrap{max-width:none;margin:0;display:grid;gap:22px;grid-template-columns:220px minmax(0,1fr);align-items:start}
+[hidden]{display:none!important}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+button{font:inherit;background:var(--accent);color:#0f1216;border:0;border-radius:10px;font-weight:700;cursor:pointer;padding:9px 14px}
+button:active{transform:translateY(1px)}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.tab{background:transparent;color:var(--muted);border:1px solid var(--line);padding:5px 11px;font-size:13px;font-weight:600}
+button.tab.on{background:var(--accent);color:#0f1216;border-color:var(--accent)}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;width:100%}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+form.login{display:grid;gap:10px;max-width:340px;margin:20px auto}
+
+/* Begrüßung */
+.greet{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+.greet-hi{font-size:24px;font-weight:800}
+/* Begrüßung links unter "Business Hub" */
+.hallo{display:flex;align-items:center;gap:12px;padding:2px 10px 14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.hico{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(245,194,107,.12);color:var(--warn)}
+.hico.nacht{background:rgba(95,212,255,.10);color:var(--accent)}
+.hico .pix{width:18px;height:18px;fill:currentColor}
+.htext{display:grid;line-height:1.25;min-width:0}
+.htext b{font-size:15px;font-weight:800}
+.htext small{font-size:11px;color:var(--muted)}
+@media (max-width:860px){ .hallo{border-bottom:0;margin:0;padding:0 10px 0 0;width:100%} }
+.greet .muted{font-size:13px;margin-top:2px}
+.quote{display:none}
+
+/* Bühne: 3D-Büro ohne Rahmen */
+.stage{position:relative;height:calc(100vh - 290px);min-height:440px;background:var(--bg)}
+.stage canvas{width:100%;height:100%;display:block}
+#labels{position:absolute;inset:0;pointer-events:none}
+.tag{position:absolute;left:0;top:0;white-space:nowrap;background:var(--panel);color:var(--ink);border-radius:8px;padding:5px 9px 6px;border-top:2px solid var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.35);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;line-height:1.3;will-change:transform}
+.tag b{font-size:12px;font-weight:700}
+.tag i{font-style:normal;display:inline-block;margin-left:6px;background:var(--accent);color:#0f1216;border-radius:999px;padding:0 6px;font-size:10px;font-weight:700}
+.tag.you{border-top-color:var(--warn)}
+.tag.wink{border-top-color:var(--warn)}
+.tstack{display:grid;gap:2px}
+.tstack b{font-size:13px}
+.tstack small{color:var(--muted);font-size:11px;font-weight:400}
+.roomtag{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform;pointer-events:auto;display:flex;align-items:center}
+.rico{width:30px;height:30px;border-radius:50%;background:rgba(19,25,35,.85);border:1px solid var(--line);color:var(--accent);display:grid;place-items:center;flex:none;cursor:default}
+.rico svg{width:16px;height:16px}
+.rname{display:none;margin-left:8px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+.roomtag:hover .rname{display:inline-block}
+#toast{position:absolute;left:14px;top:14px;background:rgba(23,26,32,.95);color:var(--ok);border-radius:6px;padding:8px 12px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;border-left:2px solid var(--ok);opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;pointer-events:none;max-width:70%}
+#toast.show{opacity:1;transform:none}
+.fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted)}
+
+/* Kennzahlen */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;border-top:1px solid var(--line);padding-top:16px}
+.kpi span{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.kpi b{display:block;font-size:26px;font-weight:800;margin-top:2px}
+.kpi small{color:var(--muted);font-size:12px}
+.xpbar{height:4px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:8px}
+.xpbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
+
+/* Als Nächstes und Fristen */
+.next{order:-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.acard{background:var(--panel);border-radius:14px;padding:9px 12px;display:grid;gap:2px;min-width:0;align-content:start}
+.acard span{font-family:"Nunito",system-ui,sans-serif;font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--muted)}
+.acard b{font-size:17px;font-weight:800}
+.acard small{color:var(--muted);font-size:12px}
+.acard.warn{box-shadow:inset 3px 0 0 var(--red)}
+.acard.warn b{color:var(--red)}
+.acard .nchip{justify-self:start;text-align:left;font-size:12px;padding:4px 10px}
+.acard .bar{margin:4px 0}
+.acard.wide{grid-column:span 2}
+.acard.wide .nchip{justify-self:stretch;text-align:left;border-radius:8px;background:var(--bg);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:6px 10px;margin-top:6px}
+@media (max-width:860px){ .next{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.nlabel{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-right:4px}
+.nchip{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;box-shadow:none}
+.nchip:hover{border-color:var(--accent)}
+.late{color:var(--red)}
+button.nchip.late{border-color:var(--red)}
+.notiz.late{color:var(--red)}
+
+/* Ringe: stehen ganz oben, unter der Begrüßung */
+/* Fortschritt rechts neben dem Büro */
+.buehne{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0 8px;align-items:start}
+.buehne .greet{grid-column:1;grid-row:1;margin-bottom:8px}
+.buehne .stage{grid-column:1;grid-row:2}
+.buehne .phasecol{grid-column:2;grid-row:1 / span 3}
+@media (max-width:900px){
+  .buehne .greet,.buehne .stage,.buehne .phasecol{grid-column:1}
+  .buehne .greet{grid-row:1}
+  .buehne .stage{grid-row:2}
+  .buehne .phasecol{grid-row:3}
+}
+.phasecol{padding:0 0 0 22px;min-width:0;align-self:start}
+/* Team-Leiste direkt unter dem Büro: eine Zeile, keine Kästen */
+.teambar{grid-column:1;grid-row:3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;margin-top:-6px;padding:10px 0 0;border-top:1px solid var(--line)}
+.tmember{display:flex;align-items:center;gap:9px;background:none;border:0;box-shadow:none;padding:4px 12px;color:var(--ink);cursor:pointer;text-align:left;min-width:0;border-right:1px solid var(--line);border-radius:0;font-weight:400}
+.tmember:first-child{padding-left:4px}
+.tmember:last-child{border-right:0}
+.tmember svg{width:15px;height:21px;flex:none;transition:transform .15s}
+.tmember:hover svg{transform:translateY(-2px)}
+.tmember.frei svg{opacity:.45}
+.tinfo{display:grid;gap:1px;min-width:0}
+.tinfo b{font-size:13px;font-weight:800;display:flex;align-items:center;gap:7px}
+.tinfo em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
+.tinfo b{white-space:nowrap}
+.tinfo small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tmember.arbeitet em{color:var(--accent)}
+.tmember.wartet em{color:var(--warn)}
+.tmember.todo em{color:var(--ink)}
+.tmember.arbeitet em::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:1px;animation:segpuls 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){ .tmember.arbeitet em::before{animation:none} }
+@media (max-width:900px){ .teambar{grid-row:3;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 0} .buehne .phasecol{grid-row:4} }
+.phasecol .next{order:0;display:grid;grid-template-columns:1fr;gap:7px}
+.phasecol .acard.wide{grid-column:auto}
+.phasecol .assist{max-width:none;width:100%}
+.phasecol .assist-card{flex-wrap:wrap;gap:10px 12px;padding:12px 14px}
+.phasecol .assist-card .nchip{margin-left:0}
+.phasecol .assist-text{font-size:14px}
+.phasecol .acard.wide .nchip{font-size:12px}
+@media (max-width:900px){ .buehne{grid-template-columns:1fr} .phasecol{border-left:0;padding:18px 0} }
+/* Weg: die sieben Phasen als Linie, darunter die Fristen */
+.weg{order:-1;display:grid;gap:14px;justify-items:center}
+.assist{width:100%;max-width:760px}
+#app > .assist{justify-self:center}
+.weg-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative;padding-top:4px}
+.weg-line::before{content:"";position:absolute;left:7%;right:7%;top:12px;height:2px;background:var(--line)}
+.station{position:relative;text-align:center;display:grid;justify-items:center;gap:4px;min-width:0}
+.station .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:var(--bg);position:relative;z-index:1}
+.station small{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted)}
+.station .sname{font-size:12px;color:var(--muted);line-height:1.25;padding:0 4px}
+.station.done .dot{background:var(--ok);border-color:var(--ok)}
+.station.done .sname{color:var(--ink)}
+.station.now .dot{border-color:var(--accent);box-shadow:0 0 0 5px rgba(122,162,200,.22)}
+.station.now .sname{color:var(--ink);font-weight:700}
+.fristen{display:flex;flex-wrap:wrap;gap:8px}
+.assist-card{display:flex;align-items:center;gap:16px;background:var(--panel);border-radius:14px;padding:14px 20px;flex-wrap:nowrap;border:1px solid var(--accent);box-shadow:0 0 28px rgba(95,212,255,.14)}
+.assist-fig{width:32px;height:44px;flex:none;animation:abob 2.4s ease-in-out infinite}
+@keyframes abob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@media (prefers-reduced-motion:reduce){ .assist-fig{animation:none} }
+.assist small{display:block;color:var(--muted);font-family:"Nunito",system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none}
+.assist-text{font-size:15px;font-weight:700;margin-top:3px}
+.assist-card .nchip{margin-left:auto}
+#assist.assist{position:absolute;left:0;top:0;width:280px;max-width:280px;margin:0;pointer-events:auto;will-change:transform;z-index:2}
+.greet .assist{flex:1;min-width:280px;max-width:560px;margin-left:auto;align-self:center}
+.uhrzeile{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.uhrkarte{display:flex;align-items:center;gap:12px}
+.uhrkarte.mini{padding:4px 2px 0}
+.phasecol .uhrkarte.mini{background:none;box-shadow:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:14px 2px 0;margin-top:6px;align-items:center;gap:14px}
+.phasecol .uhrkarte.mini .analog{width:44px;height:44px}
+.uhrkarte.navuhr{width:100%;padding:8px 10px 2px;gap:12px}
+.navuhr .analog{width:34px;height:34px;flex:none}
+.navuhr .uhrtext{gap:1px}
+.navuhr .uhrtext span{font-size:11px}
+.navuhr .uhrtext b{font-size:15px}
+.navuhr .uhrtext small{font-size:11px}
+.greet .uhrkarte.mini .analog{width:46px;height:46px}
+.greet .uhrkarte.mini .uhrtext b{font-size:18px}
+.analog{width:52px;height:52px;flex:none}
+.mini .uhrtext b{font-size:14px}
+.mini .uhrtext span{font-size:9px}
+.mini .uhrtext small{font-size:10px}
+.zifferblatt{fill:var(--bg);stroke:var(--line);stroke-width:2}
+.tick{stroke:var(--muted);stroke-width:2.5;stroke-linecap:round}
+.hand{stroke-linecap:round}
+.hand.h{stroke:var(--ink);stroke-width:4.5}
+.hand.m{stroke:var(--ink);stroke-width:2.5}
+.hand.s{stroke:var(--accent);stroke-width:1.2}
+.zentrum{fill:var(--accent)}
+.uhrtext{display:grid;gap:4px;min-width:0}
+.uhrtext span{font-family:"Nunito",system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--muted)}
+.uhrtext b{font-size:24px;font-weight:800}
+.uhrtext small{color:var(--muted);font-size:12px}
+.fpill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink)}
+.fpill.soon{border-color:var(--warn);color:var(--warn)}
+.fpill.late{border-color:var(--red);color:var(--red)}
+@media (max-width:860px){ .weg-line{grid-template-columns:repeat(7,minmax(74px,1fr));overflow-x:auto} }
+.greet{order:-2}
+.kpis{display:none}
+.ring{position:relative;width:118px;height:118px;margin:0 auto}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.rbg{fill:none;stroke:var(--line);stroke-width:2.5}
+.rfg{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:163.36;stroke-dashoffset:163.36;transition:stroke-dashoffset .6s}
+.rbg{stroke-width:2.5}
+.rtxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.rtxt b{font-size:26px;font-weight:800;line-height:1}
+.rtxt small{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* Blöcke */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px}
+.block{border-top:1px solid var(--line);padding-top:16px;min-width:0}
+
+/* Phasen */
+.phase-row{margin-bottom:12px}
+.phase-row .top{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px;gap:8px}
+.phase-row .top span{color:var(--muted)}
+.bar{height:4px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .4s}
+
+/* Team */
+.team{list-style:none;padding:0;margin:0}
+.team li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.team small{color:var(--muted);display:block;font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:8px;vertical-align:middle}
+
+/* Aufgaben */
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.quest{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.quest:hover .qt{color:#fff}
+.quest:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--accent);flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--ok)}
+.quest.done .chk{background:rgba(127,191,154,.15);border-color:var(--ok)}
+.quest.done{opacity:.5}
+.quest.done .qt{text-decoration:line-through}
+.qt{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;line-height:1.3}
+.notiz{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.xp{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+.phase{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);margin:14px 0 4px;letter-spacing:1px;text-transform:uppercase}
+form.grid2{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}
+select.full{grid-column:1/-1}
+
+/* Produkte, Wissen, Entscheidungen */
+.prod{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.ampel{width:14px;height:14px;border-radius:50%;border:0;padding:0;box-shadow:none;cursor:pointer;flex:none}
+.ampel.gruen{background:var(--ok)}
+.ampel.gelb{background:var(--warn)}
+.ampel.rot{background:var(--red)}
+.prod .pn{flex:1;min-width:0;font-size:14px}
+.prod .pn small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.del{background:transparent;color:var(--muted);border:0;padding:2px 6px;font-size:16px}
+form.prodform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:12px}
+form.entform{display:grid;gap:8px;margin-top:12px}
+.importbtn{display:inline-block;margin-top:12px;cursor:pointer;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.importbtn:hover{border-color:var(--accent);color:var(--ink)}
+.prod.verworfen{opacity:.45}
+span.ampel{display:inline-block;cursor:default}
+.auftrag{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.auftrag small{margin-left:auto;color:var(--muted)}
+.astatus{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.8px;padding:2px 6px;border-radius:6px;border:1px solid var(--line);color:var(--warn)}
+.astatus.fertig{color:var(--ok)}
+.astatus.laeuft{color:var(--accent)}
+.athema{flex:1;min-width:0}
+.afort{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.vlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+
+/* Instrumente auf den Karten rechts */
+.phasecol{background-image:linear-gradient(rgba(95,212,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(95,212,255,.045) 1px,transparent 1px);background-size:16px 16px;border-radius:18px;padding:2px 12px 12px !important;margin-top:-8px}
+.weg:has(.fristen:empty){display:none}
+.fst{display:flex;align-items:baseline;gap:5px}
+.fst b{font-size:17px}
+.fst small{font-size:12px;color:var(--muted)}
+.acard .khead{display:flex;align-items:center;gap:8px}
+.pix{width:12px;height:12px;fill:var(--accent);flex:none}
+.lampzeile{display:flex;align-items:center;gap:16px;margin-top:2px}
+.lamp{width:12px;height:12px;border-radius:50%;flex:none;background:var(--ok);box-shadow:0 0 0 3px rgba(111,224,176,.15)}
+.lamp.gelb{background:var(--warn);box-shadow:0 0 0 3px rgba(245,194,107,.15)}
+.lamp.rot{background:var(--red);box-shadow:0 0 0 3px rgba(255,122,122,.15)}
+.segs{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:2px 0}
+.seg{height:7px;border-radius:2px;background:var(--line)}
+.seg.done{background:var(--ok)}
+.seg.now{background:var(--accent);animation:segpuls 2s ease-in-out infinite}
+@keyframes segpuls{0%,100%{opacity:1}50%{opacity:.45}}
+.tacho{width:100%;max-width:110px;height:auto;justify-self:center;margin:0 0 -6px}
+.tacho-bg,.tacho-fg{fill:none;stroke-width:9;stroke-linecap:round}
+.tacho-bg{stroke:var(--line)}
+.tacho-nadel{stroke:var(--ink);stroke-width:2.5;stroke-linecap:round}
+.tacho-mitte{fill:var(--ink)}
+.funnel{display:grid;gap:3px;justify-items:center;margin:2px 0}
+.fz{position:relative;width:100%;display:flex;justify-content:center}
+.fz i{display:block;height:7px;background:linear-gradient(90deg,rgba(95,212,255,.25),rgba(95,212,255,.6));border-radius:3px}
+.fz em{position:absolute;right:0;top:-2px;font-style:normal;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+.fbest{font-size:16px !important}
+.pbox{display:inline-block;width:11px;height:11px;border:2px solid var(--accent);margin-right:9px;vertical-align:-1px;flex:none}
+.nchip:hover .pbox{background:var(--accent)}
+@media (prefers-reduced-motion:reduce){ .seg.now{animation:none} }
+.nlink{background:transparent;border:0;box-shadow:none;color:var(--accent);padding:0;font-size:12px;font-weight:700;justify-self:start;cursor:pointer;margin-top:2px}
+.nlink:hover{text-decoration:underline}
+.assist small.assist-hint{display:block;margin-top:4px;color:var(--warn);font-family:inherit;font-size:12px;letter-spacing:0;text-transform:none}
+.kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0 12px}
+.kachel{display:grid;gap:4px;text-align:left;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:none;font-weight:400;min-width:0}
+.kachel:hover,.kachel.on{border-color:var(--accent)}
+.kachel.fehlt{border-style:dashed;border-color:var(--warn)}
+.kachel.fehlt small{color:var(--warn)}
+.ktitel{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:14px}
+.ktitel em{font-style:normal;font-family:"JetBrains Mono",monospace;color:var(--muted);font-size:12px}
+.kachel small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vchip{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;box-shadow:none}
+.vchip:hover{border-color:var(--accent)}
+.pd{font-family:"JetBrains Mono",monospace;font-size:11px;margin-top:2px}
+.entform textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;resize:vertical}
+#wissenList details{padding:9px 0;border-bottom:1px solid var(--line)}
+#wissenList summary{cursor:pointer;font-weight:600;font-size:14px}
+.wtext{white-space:pre-wrap;font-size:13px;color:var(--muted);padding:8px 0 4px}
+.ent{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.entk{margin-bottom:3px}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+.empty{padding:12px 0;color:var(--muted);font-size:14px}
+.err{color:var(--red);font-size:13px;margin-top:6px;min-height:1em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* Panel: klappt rechts auf, wenn man etwas anklickt */
+nav.menu{display:flex;flex-wrap:wrap;gap:4px 22px;align-items:center}
+nav.menu button.tab{background:transparent;color:var(--muted);border:0;border-radius:10px;padding:9px 10px;font-family:"Nunito",system-ui,sans-serif;font-size:15px;font-weight:600;letter-spacing:0;text-transform:none;box-shadow:none;display:flex;align-items:center;gap:10px;width:100%;text-align:left}
+nav.menu button.tab:hover{color:var(--ink)}
+nav.menu button.tab.on{background:var(--bg);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.ngroup{font-family:"Nunito",system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--muted);margin:14px 10px 2px;opacity:.85}
+.ngroup:first-child{margin-top:0}
+.nico{display:inline-grid;place-items:center;width:16px;height:16px;flex:none}
+.nico .pix{width:14px;height:14px}
+.nbadge{margin-left:auto;font-style:normal;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+.nbadge.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);font-size:0;flex:none}
+.nbadge.dot.rot{background:var(--red)}
+nav.menu button.tab.profil{margin-top:12px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
+.avatar{display:inline-grid;place-items:center;width:24px;flex:none}
+.avatar svg{width:20px;height:28px}
+.ptext{display:grid;line-height:1.2}
+.ptext small{color:var(--muted);font-size:11px;font-weight:400}
+.drawer{position:fixed;top:50%;left:50%;width:min(760px,92vw);max-height:82vh;background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.6);padding:22px 24px;overflow-y:auto;opacity:0;pointer-events:none;transform:translate(-50%,-46%) scale(.98);transition:opacity .25s ease,transform .25s ease;z-index:10}
+.drawer.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:9}
+.veil.on{opacity:1;pointer-events:auto}
+header{position:sticky;top:16px;z-index:11;grid-column:1;grid-row:1;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:18px;background:var(--panel);border-radius:16px;padding:22px 16px;border:1px solid var(--line);box-shadow:none}
+#app,#loginCard{grid-column:2;grid-row:1;min-width:0}
+nav.menu{flex-direction:column;align-items:stretch;gap:4px}
+.ico{width:18px;height:18px;flex:none}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr}
+  header{position:static;flex-direction:row;align-items:center;grid-column:auto;grid-row:auto}
+  #app,#loginCard{grid-column:1;grid-row:auto}
+  nav.menu{flex-direction:row;flex-wrap:wrap}
+}
+.dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dhead span{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
+.drawer .grid{display:block}
+.drawer .block{display:none;border-top:0;padding-top:4px}
+.drawer .block.active{display:block}
+
+@media (max-width:860px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid{grid-template-columns:1fr;gap:24px}
+  .stage{margin:0 -18px}
+}
+
+/* Dashboard füllt am großen Bildschirm die ganze Höhe */
+@media (min-width:901px){
+  header{top:18px;height:calc(100vh - 36px);overflow-y:auto}
+  nav.menu{flex:1}
+  nav.menu button.tab.profil{margin-top:auto}
+  .buehne{min-height:calc(100vh - 36px);grid-template-rows:auto minmax(440px,1fr) auto;align-items:stretch}
+  .buehne .greet{align-self:start}
+  .buehne .stage{height:auto;min-height:440px}
+  .stage canvas{position:absolute;inset:0}
+  .buehne .teambar{align-self:end;padding-bottom:4px}
+  .phasecol{align-self:stretch;display:flex;flex-direction:column}
+  .phasecol .next{flex:1;display:flex;flex-direction:column;gap:12px}
+  .phasecol .next .acard{flex:1 1 auto;padding:14px 16px;gap:6px;border-radius:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Business Hub</h1>
+    <nav class="menu" id="menu" hidden>
+      <div class="hallo"><span class="hico" id="halloIco"></span><span class="htext"><b id="greetHi">Hallo</b><small id="greetDate"></small></span></div>
+      <div class="ngroup">Arbeiten</div>
+      <button class="tab" data-open="aufgaben"><span class="nico" data-icon="brett"></span>Aufgaben<em class="nbadge" id="nbAufgaben"></em></button>
+      <button class="tab" data-open="produkte"><span class="nico" data-icon="trichter"></span>Produkte<em class="nbadge" id="nbProdukte"></em></button>
+      <button class="tab" data-open="budget"><span class="nico" data-icon="muenze"></span>Budget<em class="nbadge" id="nbBudget"></em></button>
+      <div class="ngroup">Firma</div>
+      <button class="tab" data-open="wissen"><span class="nico" data-icon="server"></span>Gedächtnis<em class="nbadge" id="nbWissen"></em></button>
+      <button class="tab" data-open="entscheidungen"><span class="nico" data-icon="waage"></span>Entscheidungen</button>
+      <button class="tab" data-open="team"><span class="nico" data-icon="team"></span>Team</button>
+      <div class="ngroup">Übersicht</div>
+      <button class="tab" data-open="fortschritt"><span class="nico" data-icon="treppe"></span>Fortschritt</button>
+      <button class="tab profil" data-open="einstellungen"><span class="avatar" id="navAvatar"></span><span class="ptext">Corinna<small>Einstellungen</small></span></button>
+      <div class="uhrkarte mini navuhr">
+        <svg class="analog" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="46" class="zifferblatt"/>
+          <line x1="50" y1="6" x2="50" y2="12" class="tick"/><line x1="94" y1="50" x2="88" y2="50" class="tick"/>
+          <line x1="50" y1="94" x2="50" y2="88" class="tick"/><line x1="6" y1="50" x2="12" y2="50" class="tick"/>
+          <line id="hH" x1="50" y1="50" x2="50" y2="28" class="hand h"/>
+          <line id="hM" x1="50" y1="50" x2="50" y2="16" class="hand m"/>
+          <line id="hS" x1="50" y1="56" x2="50" y2="10" class="hand s"/>
+          <circle cx="50" cy="50" r="3" class="zentrum"/>
+        </svg>
+        <div class="uhrtext"><span>Arbeitszeit</span><b id="zeitHeute">0 min</b><small id="zeitWoche">Diese Woche: 0 min</small></div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Login -->
+  <section id="loginCard" hidden>
+    <h2>Anmelden</h2>
+    <form class="login" id="loginForm">
+      <input id="email" type="email" placeholder="E-Mail" autocomplete="username" required>
+      <input id="password" type="password" placeholder="Passwort" autocomplete="current-password" required>
+      <button type="submit">Anmelden</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <!-- Inhalt nach dem Login -->
+  <div id="app" hidden style="display:grid;gap:22px">
+    <div class="weg">
+      <div class="fristen" id="fristen"></div>
+    </div>
+
+    <div class="buehne">
+    <div class="quote" id="greetQuote"></div>
+    <section class="stage" id="scene">
+      <canvas id="c"></canvas>
+      <div id="labels"></div>
+      <div id="toast"></div>
+      <div class="fallback" id="fb" hidden>Die 3D-Ansicht braucht WebGL. Die Listen weiter unten funktionieren trotzdem.</div>
+    </section>
+    <div class="teambar" id="teamStatus"></div>
+    <aside class="phasecol"><div class="assist" id="assist"></div><div class="next" id="next"></div></aside>
+    </div>
+
+    <div class="kpis">
+      <div class="ring"><svg viewBox="0 0 64 64"><circle class="rbg" cx="32" cy="32" r="26"/><circle class="rfg" id="rLvl" cx="32" cy="32" r="26"/></svg><div class="rtxt"><b id="kLvl">1</b><small>Level</small></div></div>
+      <div class="ring"><svg viewBox="0 0 64 64"><circle class="rbg" cx="32" cy="32" r="26"/><circle class="rfg" id="rDone" cx="32" cy="32" r="26"/></svg><div class="rtxt"><b id="kDone">0</b><small>erledigt</small></div></div>
+      <div class="ring"><svg viewBox="0 0 64 64"><circle class="rbg" cx="32" cy="32" r="26"/><circle class="rfg" id="rOff" cx="32" cy="32" r="26"/></svg><div class="rtxt"><b id="kOff">0</b><small>offen</small></div></div>
+      <div class="ring"><svg viewBox="0 0 64 64"><circle class="rbg" cx="32" cy="32" r="26"/><circle class="rfg" id="rProd" cx="32" cy="32" r="26"/></svg><div class="rtxt"><b id="kProd">0</b><small>Produkte</small></div></div>
+    </div>
+
+    <div id="veil" class="veil"></div>
+    <aside id="drawer" class="drawer">
+      <div class="dhead"><span id="dTitle">Aufgaben</span><button class="ghost" id="dClose">Schließen</button></div>
+    <div class="grid">
+      <section class="block">
+        <h2>Fortschritt nach Phase</h2>
+        <div id="phases"></div>
+      </section>
+      <section class="block">
+        <h2>Team</h2>
+        <ul class="team" id="team"></ul>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="block" id="tasks">
+        <h2>Aufgaben</h2>
+        <div class="tabs">
+          <button class="tab on" data-filter="offen">Offen</button>
+          <button class="tab" data-filter="erledigt">Erledigt</button>
+          <button class="tab" data-filter="alle">Alle</button>
+        </div>
+        <div class="note" id="status" style="margin-top:0">Status: noch nichts geladen</div>
+        <div id="quests"></div>
+        <div id="seedBox" hidden style="margin-top:10px">
+          <div class="empty">Noch keine Aufgaben in der Datenbank.</div>
+          <button id="seedBtn">Startaufgaben aus dem Fahrplan übernehmen</button>
+        </div>
+        <form class="grid2" id="addForm">
+          <input id="qTitle" placeholder="Neue Aufgabe" required maxlength="140">
+          <button type="submit">Hinzufügen</button>
+          <select id="qPhase" class="full"></select>
+          <input id="qFrist" type="date" class="full" title="Frist (optional)">
+        </form>
+        <div class="err" id="err"></div>
+      </section>
+
+      <section class="block">
+        <h2>Produkt-Recherche</h2>
+        <form class="grid2" id="rechercheForm">
+          <input id="rThema" placeholder="Thema, z. B. Haushalt und Ordnung" required maxlength="120">
+          <button type="submit">Recherche starten</button>
+        </form>
+        <div class="note" id="rHinweis"></div>
+        <div class="note" style="margin-top:10px">Vorschläge passend zu deinem Markenbrief</div>
+        <div id="vorschlaege" class="vlist"></div>
+        <div class="note" style="margin-top:14px">Bisherige Recherchen</div>
+        <div id="auftraege"></div>
+        <div id="products" style="margin-top:8px"></div>
+        <label class="importbtn">Rechercheergebnis importieren (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+        <div class="note" id="importInfo"></div>
+        <div class="err" id="prodErr"></div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="block" id="wissen">
+        <h2>Gedächtnis</h2>
+        <p class="note" style="margin-top:0">Das weiß dein Team über deine Firma. Alle Agenten lesen hier nach. Gestrichelte Kacheln fehlen noch.</p>
+        <div id="wissenKacheln" class="kacheln"></div>
+        <div id="wissenList"></div>
+        <button type="button" class="ghost" id="wNeuBtn" style="margin-top:12px">Neues Wissen eintragen</button>
+        <form class="entform" id="wissenForm" hidden>
+          <select id="wKategorie">
+            <option value="vision">Vision</option>
+            <option value="marke">Marke</option>
+            <option value="rahmen">Rahmen</option>
+            <option value="regeln">Regeln</option>
+            <option value="lieferanten">Lieferanten</option>
+            <option value="produkte">Produkte</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+          <input id="wTitel" placeholder="Titel, z. B. Ausschlussregeln" required maxlength="120">
+          <textarea id="wInhalt" placeholder="Inhalt" required rows="5"></textarea>
+          <button type="submit">Speichern</button>
+          <div class="err" id="wErr"></div>
+        </form>
+      </section>
+      <section class="block">
+        <h2>Entscheidungen</h2>
+        <div id="entList"></div>
+        <form class="entform" id="entForm">
+          <input id="eThema" placeholder="Thema, z. B. Markenname" required maxlength="120">
+          <input id="eEntscheidung" placeholder="Was wurde entschieden?" required maxlength="300">
+          <input id="eGrund" placeholder="Warum? (optional)" maxlength="300">
+          <button type="submit">Festhalten</button>
+          <div class="err" id="entErr"></div>
+        </form>
+      </section>
+    </div>
+    <div class="grid"><section class="block">
+      <h2>Budget</h2>
+      <div class="note" id="budgetInfo" style="margin-top:0"></div>
+      <div class="row" style="margin-top:10px">
+        <label for="bTotal">Startbudget (€)</label>
+        <input id="bTotal" type="number" min="0" step="50" style="width:140px">
+        <button type="button" class="ghost" id="budgetSave">Speichern</button>
+      </div>
+      <form class="entform" id="budgetForm">
+        <input id="aBetrag" inputmode="decimal" placeholder="Betrag in €, z. B. 39" required>
+        <input id="aZweck" placeholder="Wofür? z. B. Muster Lieferant A" required maxlength="160">
+        <select id="aKategorie">
+          <option value="muster">Muster</option>
+          <option value="ware">Ware</option>
+          <option value="fracht">Fracht und Zoll</option>
+          <option value="gebuehren">Gebühren</option>
+          <option value="werbung">Werbung</option>
+          <option value="sonstiges">Sonstiges</option>
+        </select>
+        <button type="submit">Ausgabe eintragen</button>
+        <div class="err" id="budgetErr"></div>
+      </form>
+      <div id="ausgabenList" style="margin-top:12px"></div>
+    </section></div>
+    <div class="grid"><section class="block" data-panel="einstellungen"><h2>Einstellungen</h2><button class="ghost" id="logout" hidden>Abmelden</button><p class="note">Abmelden beendet die Sitzung auf diesem Gerät.</p></section></div>
+    </aside>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const PHASES = ["Vorbereitung","Gewerbe und Finanzamt","Konten und Amazon-Konto","Produkt finden","Pflichten und Codes","Ware und Import","Bis zum ersten Verkauf"];
+const START_QUESTS = [
+  // 0 Vorbereitung
+  {title:"Grundlagen von Amazon FBA verstehen", phase:0, xp:10, notiz:"Du schickst die Ware ins Amazon-Lager, Amazon verpackt und versendet. Die kostenlose Amazon Seller University hilft dir dabei."},
+  {title:"Kosten für ein Produkt durchrechnen", phase:0, xp:10, notiz:"Einkauf, Fracht zum Lager, Amazon-Gebühren, Werbung und Steuern. Erst wenn die Rechnung aufgeht, bestellst du."},
+  {title:"Nebentätigkeit beim Arbeitgeber prüfen", phase:0, xp:10, notiz:"Im Arbeitsvertrag nachsehen, ob du dich melden musst."},
+  {title:"Steuerberatung für den Start buchen", phase:0, xp:10, notiz:"Ein Termin, um Umsatzsteuer, Amazon-Gebühren und Vorsteuer zu klären. Vorher Fragen notieren."},
+  // 1 Gewerbe und Finanzamt
+  {title:"Gewerbeanmeldung sicher ablegen", phase:1, xp:10, notiz:"Kopie der Anmeldung vom 12.10.2026 speichern. Du brauchst sie für Amazon und die Bank."},
+  {title:"ELSTER-Fragebogen zur steuerlichen Erfassung ausfüllen", phase:1, xp:10, frist:"2026-11-12", notiz:"Pflicht innerhalb eines Monats nach Aufnahme der Tätigkeit (§ 138 AO), nur elektronisch über ELSTER. Regelbesteuerung wählen. Die Steuernummer kommt meist nach 2 bis 6 Wochen per Post, ohne sie lässt sich das Amazon-Konto nicht vollständig einrichten."},
+  {title:"USt-IdNr. prüfen", phase:1, xp:10, notiz:"Auf dem Finanzamt-Bescheid nachsehen und im EU-Portal VIES auf Gültigkeit prüfen."},
+  {title:"Berufsgenossenschaft prüfen", phase:1, xp:10, notiz:"Die Meldung ist binnen einer Woche Pflicht, gilt laut DGUV aber meist schon durch die Gewerbeanmeldung als erledigt. Für Handel ist die BGHW zuständig. Prüfen, ob Post von der BGHW kam, sonst dort nachfragen."},
+  {title:"Krankenkasse informieren", phase:1, xp:10, notiz:"Bei einem Nebengewerbe meist eine kurze Meldung."},
+  {title:"Rhythmus der Umsatzsteuer-Voranmeldung klären", phase:1, xp:10, notiz:"Als Neugründerin kannst du 2026 vierteljährlich melden, wenn die Umsatzsteuer voraussichtlich unter 7.500 € liegt. Diese Sonderregel läuft Ende 2026 aus. Ob ab 2027 monatlich gemeldet werden muss, mit Finanzamt oder Steuerberatung klären."},
+  // 2 Konten und Amazon-Konto
+  {title:"Geschäftskonto eröffnen", phase:2, xp:10, notiz:"Getrennt von deinem privaten Konto, z. B. Revolut Business. Amazon braucht eine IBAN dafür."},
+  {title:"Buchhaltungstool einrichten", phase:2, xp:10, notiz:"z. B. lexoffice oder sevDesk. Belege von Anfang an hochladen, nicht erst am Jahresende."},
+  {title:"Steuerrücklage-Konto anlegen", phase:2, xp:10, notiz:"Einen festen Anteil jeder Auszahlung dorthin überweisen, damit du Steuern zahlen kannst."},
+  {title:"Amazon-Verkäuferkonto (Professional) anlegen", phase:2, xp:10, notiz:"Laut Amazon-Seite für Europa 39 € im Monat zzgl. USt plus Verkaufsgebühren. Bitte in Seller Central prüfen. Du brauchst: Personalausweis, Adressnachweis (nicht älter als 180 Tage, von Firma oder Behörde, kein Screenshot), Kreditkarte, Bankkonto mit IBAN, Steuernummer und USt-IdNr. Name und Adresse überall gleich schreiben."},
+  {title:"Amazon-Gebühren und Umsatzsteuer mit der Steuerberatung klären", phase:2, xp:10, notiz:"Amazon stellt Gebühren über Luxemburg in Rechnung (Reverse Charge). Das solltest du einmal fachlich erklärt bekommen."},
+  {title:"Auszahlungen von Amazon einplanen", phase:2, xp:10, notiz:"Laut Ratgebern zahlt Amazon im 14-Tage-Rhythmus aus, und das Geld wird oft erst 7 Tage nach Zustellung freigegeben. Den aktuellen Rhythmus siehst du in Seller Central unter Zahlungen."},
+  {title:"E-Rechnungen empfangen können", phase:2, xp:10, notiz:"Seit 1.1.2025 musst du E-Rechnungen von anderen Firmen empfangen können, z. B. von Lieferanten. Ein E-Mail-Postfach plus Buchhaltungstool reicht. Selbst ausstellen musst du sie erst ab 2028, Verkäufe an Privatkunden sind ausgenommen."},
+  // 3 Produkt finden
+  {title:"Produkt mit dem Recherche-Hub finden", phase:3, xp:20, notiz:"Ziel: 2 bis 3 Produkte in der Shortlist mit Ampel und Kalkulation."},
+  {title:"Ein Produkt festlegen und im Gedächtnis festhalten", phase:3, xp:10, notiz:"Die Entscheidung unter Entscheidungen eintragen, damit später alle Agenten darauf zugreifen."},
+  // 4 Pflichten und Codes
+  {title:"EAN-Codes bei GS1 kaufen", phase:4, xp:10, notiz:"Für den Start reicht meist das Einsteigerpaket SmartStarter von GS1 Germany (1 bis 5 Codes gegen Einmalzahlung, laut älterem Dokument 35 € zzgl. MwSt.). Aktuellen Preis auf gs1-germany.de prüfen. Jede Variante braucht einen eigenen Code. Keine Codes aus Online-Generatoren verwenden."},
+  {title:"Produktsicherheit (GPSR) klären", phase:4, xp:10, notiz:"Gilt seit 13.12.2024. In Seller Central zweimal hinterlegen: einmal fürs Konto, dann für jedes Produkt. Nötig sind Hersteller, verantwortliche Person in der EU (Name, Adresse, E-Mail, Telefon) und Sicherheitshinweise auf Deutsch. Fehlen die Angaben, kann Amazon das Angebot sperren."},
+  {title:"Verpackungspflichten prüfen lassen", phase:4, xp:10, notiz:"Seit 12.08.2026 gilt die neue EU-Verpackungsverordnung. Entscheidend ist, ob du als Erzeuger gilts, z. B. mit eigener Marke auf der Verpackung. Dann ist die LUCID-Registrierung nötig. Mit Fachberatung klären."},
+  {title:"Lizenzierung der Verpackung klären", phase:4, xp:10, notiz:"Ob du dein Verpackungsmaterial bei einem dualen System lizenzieren musst, mit der Fachberatung abstimmen."},
+  {title:"Haftpflicht später prüfen", phase:4, xp:10, notiz:"Spätestens wenn der Umsatz wächst oder Amazon einen Nachweis verlangt."},
+  // 5 Ware und Import
+  {title:"Muster bei 2 bis 3 Lieferanten bestellen", phase:5, xp:10, notiz:"Qualität, Preis und Lieferzeit vergleichen."},
+  {title:"Qualität und Bedingungen schriftlich festhalten", phase:5, xp:10, notiz:"Bevor du die erste Bestellung bezahlst."},
+  {title:"EORI-Nummer beim Zoll beantragen", phase:5, xp:10, notiz:"Kostenlos über das Zoll-Portal. Brauchst du für Waren aus Nicht-EU-Ländern wie China."},
+  {title:"Spedition bis ins Amazon-Lager klären", phase:5, xp:10, notiz:"Wer übernimmt Fracht, Verzollung und Anlieferung?"},
+  {title:"Markennamen prüfen", phase:5, xp:10, notiz:"Im DPMA-Register und bei TMview nachsehen, ob es den Namen schon als Marke gibt. Das machst du vor dem Druck."},
+  {title:"Erstbestellung bezahlen und produzieren lassen", phase:5, xp:10},
+  // 6 Bis zum ersten Verkauf
+  {title:"Impressum und Firmendaten im Konto hinterlegen", phase:6, xp:10},
+  {title:"Listing unter deinem Markennamen anlegen", phase:6, xp:10, notiz:"Titel, Bulletpoints und Keywords aus deiner Recherche. Der Name muss zur Marke passen."},
+  {title:"Produktfotos machen", phase:6, xp:10, notiz:"Fertig, bevor die Ware im Lager ankommt. Deine Fotos sind deine Stärke."},
+  {title:"Keine Umwelt-Behauptungen ohne Nachweis", phase:6, xp:10, notiz:"Seit 27.09.2026 gilt die EU-Richtlinie EmpCo. Begriffe wie „umweltfreundlich“ brauchen einen Nachweis, auch in Bildern. Amazon hat Listings deshalb beanstandet."},
+  {title:"Barcodes und Verpackung prüfen", phase:6, xp:10, notiz:"Jeder Artikel braucht seinen Barcode. Die Verpackung muss so aussehen wie auf deinen Fotos."},
+  {title:"Versandplan anlegen und Ware ins Amazon-Lager schicken", phase:6, xp:10},
+  {title:"Lagerbestand planen", phase:6, xp:10, notiz:"Zu wenig Bestand bedeutet verlorene Verkäufe, zu viel kostet Lagergebühren. Hochsaison-Gebühr laut Drittquelle: ca. 0,27 € pro Stück vom 15.10.2026 bis 14.01.2027. In Seller Central prüfen."},
+  {title:"Launch-Werbung starten", phase:6, xp:10, notiz:"Mit kleinem Budget beginnen, z. B. Sponsored Products."},
+  {title:"Bewertungsregeln kennen", phase:6, xp:10, notiz:"Keine Bewertungen von Freunden oder Bekannten, keine Beilagen mit der Bitte um Bewertung."},
+  {title:"Ersten Verkauf machen", phase:6, xp:10},
+  {title:"Marke anmelden, sobald es läuft", phase:6, xp:10, notiz:"DPMA: 290 € bei elektronischer Anmeldung inklusive bis zu 3 Klassen, jede weitere Klasse 100 €. Das DPMA verschickt keine Rechnungen, Zahlungsaufforderungen privater Anbieter ignorieren. Danach die Brand Registry bei Amazon beantragen, die ist kostenlos."},
+];
+const AMPEL_NEXT = {gruen:"gelb", gelb:"rot", rot:"gruen"};
+const QUOTES = [
+  "Kleine Schritte jeden Tag ergeben am Ende große Ergebnisse.",
+  "Erledigt ist besser als perfekt.",
+  "Jede abgehakte Aufgabe bringt dich dem Ziel näher.",
+  "Ruhig bleiben, weitermachen, dranbleiben.",
+  "Du baust gerade etwas, das dir gehört.",
+  "Heute ein Schritt reicht, morgen kommt der nächste.",
+];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $ = id => document.getElementById(id);
+
+const cfg = window.BUERO_CONFIG;
+const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+
+// ---------- Team: Figuren, Plätze und Namen ----------
+// Die Namen kommen aus der Tabelle "mitarbeiter". Die Werte hier sind nur Vorgaben.
+const ZONES = [
+  {id:"scout", name:"Nico", job:"Produktrecherche", x:-10, z:-3, hair:"#5a4030", top:"#7f9b80", pants:"#5b6470", skin:"#f0cba6", say:"Warte auf dein Suchprofil", phases:[3]},
+  {id:"controller", name:"Lena", job:"Kalkulation", x:-6.5, z:-3, hair:"#2f2a27", top:"#d9a77a", pants:"#4b5563", skin:"#d9b08c", say:"Bereit für Zahlen", phases:[3]},
+  {id:"einkauf", name:"Ben", job:"Lieferanten", x:-10, z:3, hair:"#b08b5e", top:"#e5c6a0", pants:"#7a6a58", skin:"#f3d3b3", say:"Noch keine Muster", phases:[5]},
+  {id:"gestalter", name:"Tessa", job:"Marke und Fotos", x:-6.5, z:3, hair:"#6d5a4c", top:"#b9a6c2", pants:"#3f4650", skin:"#c99c7c", say:"Warte auf den Namen", phases:[6]},
+  {id:"buchhaltung", name:"Jonas", job:"Belege und Steuer", x:-3, z:0, hair:"#8c8580", top:"#9db59a", pants:"#58606b", skin:"#e6bf9b", say:"Ablage ist leer", phases:[1,2]},
+];
+const CHEF = {id:"chef", name:"Corinna", job:"Dein Büro", x:3.5, z:0, hair:"#c4622d", longHair:true, top:"#e7d7b8", pants:"#5a5046", skin:"#f2cfb3", say:"", phases:[0]};
+const BOARD = {x:-6.5, z:-6.8};   // Aufgabenwand an der Team-Rückwand
+const COFFEE = {x:-2.6, z:5.4};   // Kaffeeecke im Team-Büro
+
+function applyTeam(rows){
+  ZONES.forEach(z => {
+    const row = (rows || []).find(r => r.id === z.id);
+    if (row) { z.name = row.name; z.job = row.rolle; }
+    if (z.tagEl) z.tagEl.innerHTML = tagHtml(z);
+  });
+  renderTeam();
+}
+
+function tagHtml(p){
+  if (p.id === "scout" && scoutText) return `<span class="tstack"><b>${esc(p.name)}</b><small>${esc(scoutText)}</small></span>`;
+  return `<b>${esc(p.name)}</b>${p.open ? `<i>${p.open}</i>` : ""}`;
+}
+
+// ---------- Login ----------
+function showLogin(){ $("app").hidden = true; $("loginCard").hidden = false; $("logout").hidden = true; $("menu").hidden = true; }
+function showApp(){
+  $("loginCard").hidden = true; $("app").hidden = false; $("logout").hidden = false; $("menu").hidden = false;
+  renderGreeting();
+  if (sceneLayout) sceneLayout();
+  loadAll();
+  startZeit();
+}
+
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+  if (error) $("loginErr").textContent = "Anmeldung fehlgeschlagen: " + error.message;
+  $("password").value = "";
+});
+$("logout").addEventListener("click", () => sb.auth.signOut());
+sb.auth.onAuthStateChange((_event, session) => session ? showApp() : showLogin());
+
+// ---------- Begrüßung ----------
+function renderGreeting(){
+  const now = new Date();
+  const h = now.getHours();
+  const part = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Guten Tag" : h < 22 ? "Guten Abend" : "Gute Nacht";
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  $("greetHi").textContent = "Hallo, Corinna";
+  $("greetDate").textContent = now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) + " · " + now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+  const tag = h >= 6 && h < 19;
+  $("halloIco").innerHTML = pixIcon(tag ? "sonne" : "mond");
+  $("halloIco").className = "hico " + (tag ? "tag" : "nacht");
+  $("halloIco").title = part;
+  $("greetQuote").textContent = QUOTES[dayOfYear % QUOTES.length];
+}
+
+// ---------- Daten ----------
+let quests = [];
+let products = [];
+let wissen = [];
+let entscheidungen = [];
+let filter = "offen";
+
+async function loadAll(){
+  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget()]);
+}
+
+async function loadTeam(){
+  const { data, error } = await sb.from("mitarbeiter").select("*");
+  if (error) return showErr("Team konnte nicht geladen werden: " + error.message);
+  applyTeam(data);
+}
+
+async function loadQuests(){
+  const { data, error } = await sb.from("quests").select("*").order("phase").order("title");
+  if (error) { $("status").textContent = "Status: Laden fehlgeschlagen"; return showErr("Aufgaben konnten nicht geladen werden: " + error.message); }
+  quests = data || [];
+  $("status").textContent = `Status: ${quests.length} Aufgaben geladen`;
+  renderQuests();
+}
+
+async function loadProducts(){
+  const { data, error } = await sb.from("produkte").select("*").order("created_at");
+  if (error) return showProdErr("Produkte konnten nicht geladen werden: " + error.message);
+  products = data || [];
+  renderProducts();
+}
+
+async function loadWissen(){
+  const { data, error } = await sb.from("wissen").select("*").order("kategorie").order("titel");
+  if (error) return showErr("Wissen konnte nicht geladen werden: " + error.message);
+  wissen = data || [];
+  renderWissen();
+  updateServerLabel();
+  renderKpis();
+  renderWeg();
+  renderNavBadges();
+}
+
+// Gedächtnis: Kacheln pro Bereich, Einträge erst nach Klick
+const WISSEN_KAT = [
+  {key: "vision", label: "Vision", pflicht: true},
+  {key: "marke", label: "Marke", pflicht: true},
+  {key: "rahmen", label: "Rahmen", pflicht: true},
+  {key: "regeln", label: "Regeln", pflicht: true},
+  {key: "lieferanten", label: "Lieferanten", pflicht: false},
+  {key: "produkte", label: "Produkte", pflicht: false},
+  {key: "sonstiges", label: "Sonstiges", pflicht: false},
+];
+let wissenKat = null;
+function renderWissen(){
+  $("wissenKacheln").innerHTML = WISSEN_KAT.map(k => {
+    const items = wissen.filter(w => w.kategorie === k.key);
+    const fehlt = !items.length && k.pflicht;
+    const vorschau = items.length ? String(items[0].inhalt).trim().split("\n")[0] : "Noch leer";
+    return `<button type="button" class="kachel ${fehlt ? "fehlt" : ""} ${wissenKat === k.key ? "on" : ""}" data-kat="${k.key}">
+      <span class="ktitel">${esc(k.label)}<em>${items.length}</em></span>
+      <small>${fehlt ? "Fehlt noch" : esc(vorschau)}</small>
+    </button>`;
+  }).join("");
+  const items = wissenKat ? wissen.filter(w => w.kategorie === wissenKat) : [];
+  $("wissenList").innerHTML = !wissenKat
+    ? `<div class="empty">Klick auf eine Kachel, um die Einträge zu sehen.</div>`
+    : items.length
+      ? items.map(w => `<details open><summary>${esc(w.titel)}</summary><div class="wtext">${esc(w.inhalt)}</div></details>`).join("")
+      : `<div class="empty">Hier steht noch nichts.</div>`;
+}
+$("wissenKacheln").addEventListener("click", e => {
+  const b = e.target.closest(".kachel");
+  if (!b) return;
+  wissenKat = wissenKat === b.dataset.kat ? null : b.dataset.kat;
+  renderWissen();
+});
+$("wNeuBtn").addEventListener("click", () => {
+  const f = $("wissenForm");
+  f.hidden = !f.hidden;
+  if (!f.hidden) { if (wissenKat) $("wKategorie").value = wissenKat; $("wTitel").focus(); }
+});
+
+// ---------- Budget und Ausgaben ----------
+let budgetTotal = 2000;
+let ausgaben = [];
+let offeneRecherchen = 0;
+const eurFmt = n => Number(n || 0).toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " €";
+const ausgabenSumme = () => ausgaben.reduce((s, x) => s + (Number(x.betrag) || 0), 0);
+
+async function loadBudget(){
+  const [f, a] = await Promise.all([
+    sb.from("firma").select("budget").eq("id", "stand").single(),
+    sb.from("ausgaben").select("*").order("datum", { ascending: false }).order("created_at", { ascending: false }),
+  ]);
+  if (f.error || a.error) return showErr("Budget konnte nicht geladen werden: " + (f.error || a.error).message);
+  budgetTotal = Number(f.data?.budget) || 2000;
+  ausgaben = a.data || [];
+  renderBudget();
+  renderNext();
+}
+function renderBudget(){
+  const summe = ausgabenSumme();
+  $("budgetInfo").textContent = `${eurFmt(summe)} von ${eurFmt(budgetTotal)} ausgegeben · ${eurFmt(budgetTotal - summe)} frei`;
+  if (document.activeElement?.id !== "bTotal") $("bTotal").value = budgetTotal;
+  $("ausgabenList").innerHTML = ausgaben.length
+    ? ausgaben.map(x => `
+      <div class="ent">
+        <div class="entk"><b>${eurFmt(x.betrag)}</b> <span class="muted">${esc(x.datum)} · ${esc(x.kategorie)}</span>
+          <button class="del" data-del="${esc(x.id)}" title="Ausgabe löschen" aria-label="Ausgabe löschen">×</button></div>
+        <div>${esc(x.zweck)}</div>
+      </div>`).join("")
+    : `<div class="empty">Noch keine Ausgaben eingetragen.</div>`;
+}
+$("budgetForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const betrag = Number(String($("aBetrag").value).replace(",", "."));
+  const zweck = $("aZweck").value.trim();
+  if (!betrag || !zweck) return $("budgetErr").textContent = "Bitte Betrag und Zweck angeben.";
+  const { error } = await sb.from("ausgaben").insert({ betrag, zweck, kategorie: $("aKategorie").value });
+  if (error) return $("budgetErr").textContent = "Speichern fehlgeschlagen: " + error.message;
+  $("budgetErr").textContent = "";
+  e.target.reset();
+  loadBudget();
+});
+$("ausgabenList").addEventListener("click", async e => {
+  const b = e.target.closest("[data-del]");
+  if (!b) return;
+  if (!confirm("Diese Ausgabe löschen?")) return;
+  const { error } = await sb.from("ausgaben").delete().eq("id", b.dataset.del);
+  if (error) return $("budgetErr").textContent = "Löschen fehlgeschlagen: " + error.message;
+  loadBudget();
+});
+$("budgetSave").addEventListener("click", async () => {
+  const v = Number(String($("bTotal").value).replace(",", "."));
+  if (!v) return;
+  const { error } = await sb.from("firma").update({ budget: v }).eq("id", "stand");
+  if (error) return $("budgetErr").textContent = "Budget konnte nicht gespeichert werden: " + error.message;
+  loadBudget();
+});
+
+async function loadEntscheidungen(){
+  const { data, error } = await sb.from("entscheidungen").select("*").order("datum", { ascending: false }).order("created_at", { ascending: false });
+  if (error) return showErr("Entscheidungen konnten nicht geladen werden: " + error.message);
+  entscheidungen = data || [];
+  $("entList").innerHTML = entscheidungen.length ? entscheidungen.map(e => `
+    <div class="ent"><div class="entk"><b>${esc(e.thema)}</b> <span class="muted">${esc(e.datum)}</span></div>
+    <div>${esc(e.entscheidung)}</div>${e.begruendung ? `<div class="muted">Warum: ${esc(e.begruendung)}</div>` : ""}</div>`).join("") : `<div class="empty">Noch keine Entscheidungen festgehalten.</div>`;
+}
+
+function showErr(msg){ $("err").textContent = msg; }
+function showProdErr(msg){ $("prodErr").textContent = msg; }
+
+// ---------- Anzeige ----------
+function renderKpis(){
+  const doneCount = quests.filter(q => q.status === "erledigt").length;
+  const doneXp = quests.filter(q => q.status === "erledigt").reduce((s, q) => s + (Number(q.xp) || 10), 0);
+  const level = 1 + Math.floor(doneXp / 50);
+  const inLevel = doneXp % 50;
+  const C = 163.36;   // Umfang des Kreises (r = 26)
+  const setRing = (id, frac) => { $(id).style.strokeDashoffset = C * (1 - Math.max(0, Math.min(1, frac))); };
+  $("kLvl").textContent = level;
+  setRing("rLvl", inLevel / 50);
+  $("kOff").textContent = quests.length - doneCount;
+  setRing("rOff", quests.length ? (quests.length - doneCount) / quests.length : 0);
+  $("kDone").textContent = doneCount;
+  setRing("rDone", quests.length ? doneCount / quests.length : 0);
+  $("kProd").textContent = products.filter(p => !p.verworfen_weil).length;
+  setRing("rProd", Math.min(1, products.length / 10));
+  lastStats = {level, done: doneCount, open: quests.length - doneCount, products: products.filter(p => !p.verworfen_weil).length, wissen: wissen.length};
+  if (updateScreens) updateScreens(lastStats);
+}
+
+function renderPhases(){
+  $("phases").innerHTML = PHASES.map((name, i) => {
+    const all = quests.filter(q => q.phase === i);
+    const done = all.filter(q => q.status === "erledigt").length;
+    const pct = all.length ? done / all.length * 100 : 0;
+    return `<div class="phase-row">
+      <div class="top"><span>${i + 1}. ${esc(name)}</span><span>${done} / ${all.length}</span></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+    </div>`;
+  }).join("");
+}
+
+function renderTeam(){
+  $("team").innerHTML = ZONES.map(z => {
+    const open = quests.filter(q => q.status !== "erledigt" && z.phases.includes(q.phase)).length;
+    z.open = open;
+    if (z.tagEl) z.tagEl.innerHTML = tagHtml(z);
+    return `<li><span><span class="dot"></span><b>${esc(z.name)}</b><small>${esc(z.job)}</small></span><span class="muted">${open} offen</span></li>`;
+  }).join("");
+}
+
+function renderQuests(){
+  $("seedBox").hidden = quests.length > 0;
+  const shown = quests.filter(q => filter === "alle" || (filter === "offen" ? q.status !== "erledigt" : q.status === "erledigt"));
+  let html = "", lastPhase = null;
+  for (const q of shown){
+    if (q.phase !== lastPhase){ html += `<div class="phase">${esc(PHASES[q.phase] ?? "Sonstiges")}</div>`; lastPhase = q.phase; }
+    const done = q.status === "erledigt";
+    html += `<div class="quest ${done ? "done" : ""} ${overdue(q) ? "late" : ""}" data-id="${esc(q.id)}" role="button" tabindex="0">
+      <div class="chk">${done ? "✓" : ""}</div>
+      <div class="qt">${esc(q.title)}${q.notiz ? `<small class="notiz">${esc(q.notiz)}</small>` : ""}${fristTxt(q)}</div>
+      <div class="xp">+${Number(q.xp) || 10} XP</div></div>`;
+  }
+  $("quests").innerHTML = html || `<div class="empty">Nichts in dieser Ansicht.</div>`;
+  renderKpis();
+  renderNext();
+  renderWeg();
+  renderPhases();
+  renderTeam();
+  if (updateScene) updateScene(quests);
+  renderTeamStatus();
+}
+
+// Fristen: Anzeige, überfällig und die nächsten Aufgaben
+function overdue(q){
+  if (!q.frist || q.status === "erledigt") return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(q.frist + "T00:00:00") < today;
+}
+function fristTxt(q){
+  if (!q.frist) return "";
+  const late = overdue(q);
+  return `<small class="notiz ${late ? "late" : ""}">Frist ${new Date(q.frist + "T00:00:00").toLocaleDateString("de-DE")}${late ? " · überfällig" : ""}</small>`;
+}
+// Kleine Pixel-Symbole für die Kartenköpfe ("#" = Pixel)
+const PIX_ICONS = {
+  uhr:      ["..####..", ".#....#.", "#..#...#", "#..#...#", "#..###.#", "#......#", ".#....#.", "..####.."],
+  treppe:   ["........", "......##", "......##", "....####", "....####", "..######", "..######", "########"],
+  muenze:   ["..####..", ".#....#.", "#..##..#", "#.#....#", "#.#....#", "#..##..#", ".#....#.", "..####.."],
+  trichter: ["########", ".######.", "..####..", "...##...", "...##...", "...##...", "...##...", "........"],
+  brett:    [".##..##.", "########", "#......#", "#.####.#", "#......#", "#.####.#", "#......#", "########"],
+  server:   ["########", "#.#....#", "########", "........", "########", "#.#....#", "########", "........"],
+  waage:    ["...##...", "########", "#..##..#", "#..##..#", "##.##.##", "...##...", "...##...", ".######."],
+  team:     [".##..##.", ".##..##.", "........", "###..###", "###..###", "###..###", "........", "........"],
+  sonne:    ["#..#...#", ".#.#..#.", "...##...", "#.####.#", ".######.", "...##...", ".#....#.", "#..#...#"],
+  mond:     ["..###...", ".##.....", "##......", "##......", "##......", "##....#.", ".######.", "..####.."],
+};
+function pixIcon(name){
+  const rects = [];
+  PIX_ICONS[name].forEach((row, y) => [...row].forEach((c, x) => {
+    if (c === "#") rects.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+  }));
+  return `<svg class="pix" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${rects.join("")}</svg>`;
+}
+const khead = (icon, text) => `<span class="khead">${pixIcon(icon)}${esc(text)}</span>`;
+
+// Zähler an den Menüpunkten links
+function renderNavBadges(){
+  const offen = quests.filter(q => q.status !== "erledigt").length;
+  $("nbAufgaben").textContent = offen || "";
+  $("nbProdukte").textContent = offeneRecherchen ? `${offeneRecherchen} offen` : "";
+  const ueberzogen = ausgabenSumme() > budgetTotal;
+  $("nbBudget").className = "nbadge" + (ueberzogen ? " dot rot" : "");
+  const luecke = WISSEN_KAT.some(k => k.pflicht && !wissen.some(w => w.kategorie === k.key));
+  $("nbWissen").className = "nbadge" + (luecke ? " dot" : "");
+  $("nbWissen").title = luecke ? "Im Gedächtnis fehlen noch Pflichtbereiche" : "";
+}
+
+function renderNext(){
+  const key = q => q.frist || "9999-12-31";
+  const open = quests.filter(q => q.status !== "erledigt")
+    .sort((a, b) => key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : (a.phase - b.phase));
+  const late = quests.filter(overdue);
+  const weekEnd = new Date(); weekEnd.setHours(0, 0, 0, 0); weekEnd.setDate(weekEnd.getDate() + 7);
+  const soon = open.filter(q => q.frist && !overdue(q) && new Date(q.frist + "T00:00:00") <= weekEnd);
+  const doneCount = quests.filter(q => q.status === "erledigt").length;
+  const pct = quests.length ? Math.round(doneCount / quests.length * 100) : 0;
+  const cur = PHASES.findIndex((n, i) => quests.some(q => q.phase === i && q.status !== "erledigt"));
+  // Heute dran: überfällige und offene Aufgaben der aktuellen Phase, höchstens fünf
+  const today = open.filter(q => overdue(q) || q.phase === cur).slice(0, 3);
+  renderNavBadges();
+  // Budget und bestes Produkt aus der Recherche
+  const summe = ausgabenSumme();
+  const frei = budgetTotal - summe;
+  const bpct = budgetTotal ? Math.min(100, summe / budgetTotal * 100) : 0;
+  const besten = products.filter(p => !p.verworfen_weil)
+    .sort((a, b) => (Number(b.punkte) || 0) - (Number(a.punkte) || 0))[0];
+  const ampelText = {gruen: "grün", gelb: "gelb", rot: "rot"};
+  // Statuslampe für Fällig
+  const lampe = late.length ? "rot" : soon.length ? "gelb" : "gruen";
+  // Sieben Phasenfelder: erledigt, aktuell oder offen
+  const segs = PHASES.map((name, i) => {
+    const all = quests.filter(q => q.phase === i);
+    const fertig = all.length && all.every(q => q.status === "erledigt");
+    const cls = fertig ? "done" : i === cur ? "now" : "";
+    return `<i class="seg ${cls}" title="${esc(`${i + 1}. ${name}`)}"></i>`;
+  }).join("");
+  // Tacho für das Budget: Nadel von links (0 %) nach rechts (100 %)
+  const tachoFarbe = bpct >= 100 ? "var(--red)" : bpct >= 75 ? "var(--warn)" : "var(--accent)";
+  const nadel = -90 + 180 * Math.min(bpct, 100) / 100;
+  // Trichter der Produktsuche: wie viele Kandidaten welche Stufe erreicht haben
+  const stufe = p => Number(p.stufe) || 1;
+  const trichter = [1, 2, 3, 4].map(k => products.filter(p => stufe(p) >= k).length);
+  const tLabels = ["Ideen", "Markt", "Kalkuliert", "Tiefencheck"];
+  $("next").innerHTML = `
+    <div class="acard ${late.length ? "warn" : ""}">
+      ${khead("uhr", "Fällig")}
+      <div class="lampzeile"><i class="lamp ${lampe}"></i>
+        <div class="fst"><b>${late.length}</b><small>überfällig</small></div>
+        <div class="fst"><b>${soon.length}</b><small>in 7 Tagen</small></div>
+      </div>
+    </div>
+    <div class="acard">
+      ${khead("treppe", "Fortschritt")}
+      <b>${pct} %</b>
+      <div class="segs">${segs}</div>
+      <small>${cur >= 0 ? `Phase ${cur + 1}: ${esc(PHASES[cur])}` : "alles erledigt"}</small>
+    </div>
+    <div class="acard ${frei < 0 ? "warn" : ""}">
+      ${khead("muenze", "Budget")}
+      <svg class="tacho" viewBox="0 0 120 70" aria-hidden="true">
+        <path d="M10 62 A50 50 0 0 1 110 62" class="tacho-bg" pathLength="100"/>
+        <path d="M10 62 A50 50 0 0 1 110 62" class="tacho-fg" pathLength="100" style="stroke:${tachoFarbe};stroke-dasharray:${Math.min(bpct, 100)} 100"/>
+        <line x1="60" y1="62" x2="60" y2="22" class="tacho-nadel" transform="rotate(${nadel} 60 62)"/>
+        <circle cx="60" cy="62" r="4" class="tacho-mitte"/>
+      </svg>
+      <b>${eurFmt(frei)} frei</b>
+      <small>${eurFmt(summe)} von ${eurFmt(budgetTotal)} ausgegeben</small>
+      <button type="button" class="nlink" data-goto="budget">Ausgaben ansehen</button>
+    </div>
+    <div class="acard">
+      ${khead("trichter", "Produktsuche")}
+      <div class="funnel">${trichter.map((n, i) => `
+        <div class="fz" title="${tLabels[i]}"><i style="width:${100 - i * 22}%"></i><em>${n}</em></div>`).join("")}
+      </div>
+      <b class="fbest">${besten ? esc(besten.name) : "Noch kein Produkt"}</b>
+      <small>${besten ? `Ampel ${ampelText[besten.ampel] || esc(besten.ampel)}${besten.punkte != null ? ` · ${besten.punkte} Punkte` : ""}` : "Starte die erste Recherche"} · ${offeneRecherchen} offen</small>
+      <button type="button" class="nlink" data-goto="produkte">Zur Recherche</button>
+    </div>
+    <div class="acard wide">
+      ${khead("brett", "Heute dran")}
+      ${today.length
+        ? today.map(q => `<button class="nchip ${overdue(q) ? "late" : ""}" data-id="${esc(q.id)}" title="${esc(q.title)}"><span class="pbox"></span>${esc(q.title)}</button>`).join("")
+        : `<small>Nichts offen, oder noch keine Aufgaben.</small>`}
+    </div>`;
+}
+
+// Assistent als kleine Pixel-Figur, die dich anschaut
+const ASSIST_MAP = [
+  "....HHHH....",
+  "...HHHHHH...",
+  "..HHHHHHHH..",
+  "..HSSSSSSH..",
+  "..SSESSESS..",
+  "..SSSSSSSS..",
+  "..SSSMMSSS..",
+  "...SSSSSS...",
+  "....TTTT....",
+  "..ATTTTTTA..",
+  "..ATTTTTTA..",
+  "..ATTTTTTA..",
+  "....TTTT....",
+  "....PPPP....",
+  "....PPPP....",
+  "....PP..PP..",
+  "....FF..FF..",
+];
+const ASSIST_COLORS = {H:"#6b5a4c", S:"#f0cba6", E:"#2b2620", M:"#b0705a", T:"#7aa2c8", A:"#7aa2c8", P:"#3b4250", F:"#2a2d33"};
+// Corinna: lange rote Haare
+const CORINNA_MAP = [
+  "...HHHHHH...",
+  "..HHHHHHHH..",
+  ".HHHHHHHHHH.",
+  ".HHSSSSSSHH.",
+  ".HSSESSESSH.",
+  ".HSSSSSSSSH.",
+  ".HSSSMMSSSH.",
+  ".HHSSSSSSHH.",
+  ".HH.TTTT.HH.",
+  "..ATTTTTTA..",
+  "..ATTTTTTA..",
+  "..ATTTTTTA..",
+  "....TTTT....",
+  "....PPPP....",
+  "....PPPP....",
+  "....PP..PP..",
+  "....FF..FF..",
+];
+// Pixel-Figur mit eigenen Farben, z. B. für dich in der Menüleiste
+function pixFigure(colors, map = ASSIST_MAP){
+  const rects = [];
+  map.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== "." && colors[ch]) rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${colors[ch]}"/>`);
+  }));
+  return `<svg viewBox="0 0 12 17" shape-rendering="crispEdges" aria-hidden="true">${rects.join("")}</svg>`;
+}
+function assistFigure(){
+  const rects = [];
+  ASSIST_MAP.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== "." && ASSIST_COLORS[ch]) rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${ASSIST_COLORS[ch]}"/>`);
+  }));
+  return `<svg class="assist-fig" viewBox="0 0 12 17" shape-rendering="crispEdges" aria-hidden="true">${rects.join("")}</svg>`;
+}
+
+// Weg: die Phasen als Linie, und die nächsten Fristen
+function renderWeg(){
+  // Assistent: zeigt die nächste offene Aufgabe
+  const key = q => q.frist || "9999-12-31";
+  const next = quests.filter(q => q.status !== "erledigt")
+    .sort((a, b) => key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : (a.phase - b.phase))[0];
+  // Hinweis, wenn im Gedächtnis ein Pflichtbereich fehlt
+  const luecken = WISSEN_KAT.filter(k => k.pflicht && !wissen.some(w => w.kategorie === k.key)).map(k => k.label);
+  const hint = luecken.length ? `Im Gedächtnis fehlt noch: ${luecken.join(", ")}` : "";
+  $("assist").innerHTML = next
+    ? `<div class="assist-card">
+         <div><small>Dein Assistent</small><div class="assist-text">Als Nächstes: ${esc(next.title)}</div>${hint ? `<small class="assist-hint">${esc(hint)}</small>` : ""}</div>
+         <button class="nchip" data-id="${esc(next.id)}">Erledigt</button>
+       </div>`
+    : `<div class="assist-card"><div class="assist-text">Gerade ist nichts offen.</div></div>`;
+  const weekEnd = new Date(); weekEnd.setHours(0, 0, 0, 0); weekEnd.setDate(weekEnd.getDate() + 7);
+  const dated = quests.filter(q => q.frist && q.status !== "erledigt" && (!next || q.id !== next.id))
+    .sort((a, b) => a.frist < b.frist ? -1 : a.frist > b.frist ? 1 : 0).slice(0, 6);
+  $("fristen").innerHTML = dated.length
+    ? dated.map(q => {
+        const cls = overdue(q) ? "late" : new Date(q.frist + "T00:00:00") <= weekEnd ? "soon" : "";
+        return `<span class="fpill ${cls}">${new Date(q.frist + "T00:00:00").toLocaleDateString("de-DE")} · ${esc(q.title)}</span>`;
+      }).join("")
+    : "";
+}
+
+// Produktkarten: Kennzahlen aus der Recherche, verworfene Nischen ans Ende
+function prodDetails(p){
+  const eurNum = n => Number(n).toLocaleString("de-DE", { maximumFractionDigits: 0 }) + " €";
+  const parts = [];
+  if (p.stufe != null) parts.push(`Stufe ${p.stufe}`);
+  if (p.punkte != null) parts.push(`${p.punkte} Punkte`);
+  if (p.marge_prozent != null) parts.push(`Marge ${p.marge_prozent} %`);
+  if (p.startinvestition != null) parts.push(`Start ${eurNum(p.startinvestition)}`);
+  if (p.nischenumsatz_monat != null) parts.push(`Nische ${eurNum(p.nischenumsatz_monat)}/Monat`);
+  return parts.length ? `<small class="pd">${esc(parts.join(" · "))}</small>` : "";
+}
+function sortProducts(list){
+  return [...list].sort((a, b) =>
+    (a.verworfen_weil ? 1 : 0) - (b.verworfen_weil ? 1 : 0) || (Number(b.punkte) || 0) - (Number(a.punkte) || 0));
+}
+
+function renderProducts(){
+  if (!products.length) {
+    $("products").innerHTML = `<div class="empty">Noch keine Produkte. Trag unten das erste ein.</div>`;
+  } else {
+    $("products").innerHTML = sortProducts(products).map(p => `
+      <div class="prod ${p.verworfen_weil ? "verworfen" : ""}" data-id="${esc(p.id)}">
+        <span class="ampel ${esc(p.ampel)}" title="Ampel aus der Recherche"></span>
+        <div class="pn">${esc(p.name)}<small>${esc(p.grund || "")}</small>${prodDetails(p)}</div>
+        <button class="del" data-act="del" title="Löschen" aria-label="Löschen">×</button>
+      </div>`).join("");
+  }
+  renderKpis();
+  renderNext();
+}
+
+// ---------- Aktionen ----------
+$("quests").addEventListener("click", async e => {
+  const row = e.target.closest(".quest");
+  if (!row) return;
+  const q = quests.find(x => String(x.id) === row.dataset.id);
+  if (!q) return;
+  const nowDone = q.status !== "erledigt";
+  const { error } = await sb.from("quests").update({ status: nowDone ? "erledigt" : "offen" }).eq("id", q.id);
+  if (error) return showErr("Speichern fehlgeschlagen: " + error.message);
+  if (nowDone) toast(q.title);
+  loadQuests();
+});
+
+document.querySelectorAll("[data-filter]").forEach(btn => btn.addEventListener("click", () => {
+  setFilter(btn.dataset.filter);
+}));
+function setFilter(f){
+  filter = f;
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.filter === f));
+  renderQuests();
+}
+
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const title = $("qTitle").value.trim();
+  if (!title) return;
+  const { error } = await sb.from("quests").insert({ title, phase: Number($("qPhase").value), status: "offen", xp: 10, frist: $("qFrist").value || null });
+  if (error) return showErr("Anlegen fehlgeschlagen: " + error.message);
+  $("qTitle").value = "";
+  $("qFrist").value = "";
+  loadQuests();
+});
+
+$("seedBtn").addEventListener("click", async () => {
+  const { error } = await sb.from("quests").insert(START_QUESTS.map(q => ({ ...q, status: "offen" })));
+  if (error) { $("status").textContent = "Status: Anlegen fehlgeschlagen"; return showErr("Startaufgaben konnten nicht angelegt werden: " + error.message); }
+  $("status").textContent = `Status: ${START_QUESTS.length} Startaufgaben angelegt`;
+  loadQuests();
+});
+
+$("next").addEventListener("click", async e => {
+  const g = e.target.closest("[data-goto]");
+  if (g) return openPanel(g.dataset.goto);
+  const b = e.target.closest(".nchip");
+  if (!b) return;
+  const q = quests.find(x => String(x.id) === b.dataset.id);
+  if (!q) return;
+  const { error } = await sb.from("quests").update({ status: "erledigt" }).eq("id", q.id);
+  if (error) return showErr("Speichern fehlgeschlagen: " + error.message);
+  toast(q.title);
+  loadQuests();
+});
+
+$("assist").addEventListener("click", async e => {
+  const b = e.target.closest(".nchip");
+  if (!b) return;
+  const q = quests.find(x => String(x.id) === b.dataset.id);
+  if (!q) return;
+  const { error } = await sb.from("quests").update({ status: "erledigt" }).eq("id", q.id);
+  if (error) return showErr("Speichern fehlgeschlagen: " + error.message);
+  toast(q.title);
+  loadQuests();
+});
+
+// Import einer Ergebnisdatei aus der Produktrecherche
+$("importFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); }
+  catch { return showProdErr("Die Datei ist kein gültiges JSON."); }
+  if (!data || !Array.isArray(data.produkte)) return showProdErr("In der Datei fehlt die Liste „produkte“.");
+  const ampel = a => ({ "grün": "gruen", "gruen": "gruen", "gelb": "gelb", "rot": "rot" })[String(a || "").toLowerCase()] || "rot";
+  const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
+  const list = v => Array.isArray(v) ? v : [];
+  const rows = data.produkte.filter(p => p && p.name).map(p => ({
+    name: String(p.name).slice(0, 200),
+    nische: p.nische || null,
+    ampel: p.verworfen_weil ? "rot" : ampel(p.ampel),
+    grund: p.verworfen_weil ? `Verworfen in Stufe ${p.stufe ?? "?"}: ${p.verworfen_weil}` : (p.verbesserung || null),
+    stufe: num(p.stufe),
+    punkte: num(p.punkte),
+    verworfen_weil: p.verworfen_weil || null,
+    nachkauf_signale: list(p.nachkauf_signale),
+    folgeprodukte: list(p.folgeprodukte),
+    verbesserung: p.verbesserung || null,
+    verkaufspreis: num(p.verkaufspreis),
+    einkaufspreis: num(p.einkaufspreis),
+    fba_gebuehr: num(p.fba_gebuehr),
+    zollsatz: num(p.zollsatz),
+    marge_prozent: num(p.marge_prozent),
+    startinvestition: num(p.startinvestition),
+    nischenumsatz_monat: num(p.nischenumsatz_monat),
+    risiken: list(p.risiken),
+    offene_fragen: list(p.offene_fragen),
+    quellen: list(p.quellen),
+    auftrag: data.auftrag || null,
+    recherche_datum: data.datum || null,
+  }));
+  if (!rows.length) return showProdErr("Die Datei enthält keine Produkte.");
+  // Doppelten Import derselben Recherche vermeiden
+  if (data.auftrag && data.datum) {
+    const { data: vorhanden } = await sb.from("produkte").select("id").eq("auftrag", data.auftrag).eq("recherche_datum", data.datum);
+    if (vorhanden && vorhanden.length && !confirm(`Diese Recherche wurde schon importiert (${vorhanden.length} Einträge). Trotzdem noch einmal importieren?`)) return;
+  }
+  const { error } = await sb.from("produkte").insert(rows);
+  if (error) return showProdErr("Import fehlgeschlagen: " + error.message);
+  showProdErr("");
+  const t = data.trichter || {};
+  $("importInfo").textContent = `Importiert: ${rows.length} Einträge aus „${data.auftrag || "Recherche"}“. Trichter: ${t.stufe1 ?? "?"} Ideen → ${t.stufe2 ?? "?"} → ${t.stufe3 ?? "?"} → ${t.stufe4 ?? "?"}.`;
+  // Passenden offenen Auftrag als erledigt markieren
+  if (data.auftrag) {
+    await sb.from("recherche_auftraege").update({ status: "fertig", erledigt_am: new Date().toISOString() })
+      .eq("thema", data.auftrag).eq("status", "offen");
+    loadAuftraege();
+  }
+  loadProducts();
+});
+
+$("products").addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const row = btn.closest(".prod");
+  const p = products.find(x => String(x.id) === row.dataset.id);
+  if (!p) return;
+  if (btn.dataset.act === "ampel") {
+    const { error } = await sb.from("produkte").update({ ampel: AMPEL_NEXT[p.ampel] || "gelb" }).eq("id", p.id);
+    if (error) return showProdErr("Ampel konnte nicht geändert werden: " + error.message);
+  } else {
+    if (!confirm(`„${p.name}“ wirklich löschen?`)) return;
+    const { error } = await sb.from("produkte").delete().eq("id", p.id);
+    if (error) return showProdErr("Löschen fehlgeschlagen: " + error.message);
+  }
+  loadProducts();
+});
+
+// ---------- Recherche-Aufträge: Thema eingeben, Claude erledigt die Recherche ----------
+async function loadAuftraege(){
+  const { data, error } = await sb.from("recherche_auftraege").select("*").order("created_at", { ascending: false }).limit(10);
+  if (error) return showProdErr("Recherche-Aufträge konnten nicht geladen werden: " + error.message);
+  renderVorschlaege(new Set((data || []).map(a => String(a.thema).toLowerCase())));
+  offeneRecherchen = (data || []).filter(a => a.status !== "fertig").length;
+  const gepr = new Set((data || []).map(a => String(a.thema).toLowerCase()));
+  const ideen = VORSCHLAEGE.filter(v => !gepr.has(v.toLowerCase())).length;
+  const laufend = (data || []).find(a => a.status === "laeuft");
+  const bereit = (data || []).some(a => a.status === "offen");
+  scoutWaving = bereit || ideen > 0;
+  teamInfo = { laufend: !!laufend, bereit, ideen };
+  renderTeamStatus();
+  scoutText = laufend
+    ? `Recherche läuft: ${laufend.fortschritt || "gleich geht es los"}`
+    : bereit
+      ? "Auftrag bereit, Klick für Details"
+      : ideen > 0 ? `Hat ${ideen} Ideen für dich` : "Gerade nichts offen";
+  if (ZONES[0].tagEl) {
+    ZONES[0].tagEl.innerHTML = tagHtml(ZONES[0]);
+    ZONES[0].tagEl.classList.toggle("wink", scoutWaving);
+  }
+  renderNext();
+  if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Noch keine Recherche gestartet.</div>`; return; }
+  const label = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
+  $("auftraege").innerHTML = (data || []).map(a => `
+    <div class="auftrag"><span class="astatus ${a.status}">${label[a.status] || a.status}</span><span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span><small>${new Date(a.created_at).toLocaleDateString("de-DE")}</small></div>`).join("");
+}
+
+// Themenvorschläge passend zum Markenbrief: Nachkauf, Textil oder Haushalt, nicht reguliert
+const VORSCHLAEGE = [
+  "Haushalt und Ordnung",
+  "Putz- und Spültücher",
+  "Haushaltstextilien",
+  "Wäsche und Waschen",
+  "Haustier-Alltag",
+  "Büro und Organisation",
+  "Bad und Badtextilien",
+];
+function renderVorschlaege(done){
+  const offen = VORSCHLAEGE.filter(v => !done.has(v.toLowerCase()));
+  $("vorschlaege").innerHTML = offen.length
+    ? offen.map(v => `<button type="button" class="vchip" data-thema="${esc(v)}">${esc(v)}</button>`).join("")
+    : `<span class="muted">Alle Vorschläge sind schon recherchiert.</span>`;
+}
+$("vorschlaege").addEventListener("click", e => {
+  const b = e.target.closest(".vchip");
+  if (!b) return;
+  $("rThema").value = b.dataset.thema;
+  $("rThema").focus();
+});
+
+$("rechercheForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const thema = $("rThema").value.trim();
+  if (!thema) return;
+  const { error } = await sb.from("recherche_auftraege").insert({ thema });
+  if (error) return showProdErr("Auftrag konnte nicht angelegt werden: " + error.message);
+  const befehl = `Recherchiere „${thema}“ nach dem Handbuch fba-produktrecherche und lege das Ergebnis in buero/recherche ab. Verwende als Auftrag genau: ${thema}`;
+  let kopiert = false;
+  try { await navigator.clipboard.writeText(befehl); kopiert = true; } catch {}
+  $("rHinweis").textContent = kopiert
+    ? "Auftrag angelegt. Der Befehl für Claude ist kopiert. Füge ihn in einer neuen Claude-Unterhaltung ein."
+    : `Auftrag angelegt. Schreib in einer neuen Claude-Unterhaltung: ${befehl}`;
+  $("rThema").value = "";
+  showProdErr("");
+  loadAuftraege();
+});
+
+$("wissenForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const row = { kategorie: $("wKategorie").value, titel: $("wTitel").value.trim(), inhalt: $("wInhalt").value.trim() };
+  if (!row.titel || !row.inhalt) return;
+  const { error } = await sb.from("wissen").insert(row);
+  if (error) return $("wErr").textContent = "Speichern fehlgeschlagen: " + error.message;
+  $("wErr").textContent = "";
+  e.target.reset();
+  e.target.hidden = true;
+  wissenKat = row.kategorie;
+  loadWissen();
+});
+
+$("entForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const row = { thema: $("eThema").value.trim(), entscheidung: $("eEntscheidung").value.trim(), begruendung: $("eGrund").value.trim() || null };
+  if (!row.thema || !row.entscheidung) return;
+  const { error } = await sb.from("entscheidungen").insert(row);
+  if (error) return $("entErr").textContent = "Speichern fehlgeschlagen: " + error.message;
+  $("entErr").textContent = "";
+  e.target.reset();
+  loadEntscheidungen();
+});
+
+$("qPhase").innerHTML = PHASES.map((p, i) => `<option value="${i}">${i + 1}. ${esc(p)}</option>`).join("");
+
+// ---------- Arbeitszeit: zählt nur, solange du am Hub aktiv bist ----------
+// Ohne Maus, Tastatur oder Scrollen länger als 5 Minuten gilt als Pause.
+// Neuladen setzt die Sitzung von heute fort, statt jedes Mal eine neue anzufangen.
+const ZEIT_PAUSE_MS = 5 * 60000;
+const ZEIT_FORTSETZEN_MS = 30 * 60000;
+let zeitId = null, zeitMs = 0, zeitLast = Date.now(), zeitStarted = false, zeitAktiv = Date.now();
+let zeitAndereHeute = 0, zeitAndereWoche = 0;
+["pointermove", "pointerdown", "keydown", "wheel", "touchstart"].forEach(ev =>
+  window.addEventListener(ev, () => { zeitAktiv = Date.now(); }, { passive: true }));
+function fmtMin(m){ return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; }
+function zeitTick(){
+  const now = Date.now();
+  if (document.visibilityState === "visible" && now - zeitAktiv < ZEIT_PAUSE_MS) zeitMs += now - zeitLast;
+  zeitLast = now;
+  renderZeit();
+}
+async function startZeit(){
+  if (zeitStarted) return;
+  zeitStarted = true;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const { data: letzte } = await sb.from("arbeitszeit").select("id,ende,minuten")
+    .gte("start", today.toISOString()).order("start", { ascending: false }).limit(1);
+  const l = (letzte || [])[0];
+  if (l && l.ende && Date.now() - new Date(l.ende).getTime() < ZEIT_FORTSETZEN_MS) {
+    zeitId = l.id;
+    zeitMs = (Number(l.minuten) || 0) * 60000;
+  } else {
+    const { data, error } = await sb.from("arbeitszeit").insert({ start: new Date().toISOString(), ende: new Date().toISOString() }).select("id").single();
+    if (error) return showErr("Arbeitszeit konnte nicht gestartet werden: " + error.message);
+    zeitId = data.id;
+  }
+  zeitLast = Date.now();
+  setInterval(zeitTick, 5000);
+  setInterval(flushZeit, 15000);
+  document.addEventListener("visibilitychange", () => { zeitTick(); if (document.visibilityState === "hidden") flushZeit(); });
+  window.addEventListener("pagehide", () => { zeitTick(); flushZeit(); });
+  await loadZeit();
+  setInterval(loadZeit, 120000);
+}
+async function flushZeit(){
+  if (!zeitId) return;
+  await sb.from("arbeitszeit").update({ ende: new Date().toISOString(), minuten: Math.round(zeitMs / 60000) }).eq("id", zeitId);
+}
+async function loadZeit(){
+  const monday = new Date(); monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const { data, error } = await sb.from("arbeitszeit").select("id,start,minuten").gte("start", monday.toISOString());
+  if (error) return;
+  // Die laufende Sitzung zählt live aus zeitMs, nicht aus der Datenbank
+  const andere = (data || []).filter(r => r.id !== zeitId);
+  const sum = rows => rows.reduce((s, r) => s + (Number(r.minuten) || 0), 0);
+  zeitAndereHeute = sum(andere.filter(r => new Date(r.start) >= today));
+  zeitAndereWoche = sum(andere);
+  renderZeit();
+}
+function renderZeit(){
+  const jetzt = Math.floor(zeitMs / 60000);
+  $("zeitHeute").textContent = fmtMin(zeitAndereHeute + jetzt);
+  $("zeitWoche").textContent = `Diese Woche: ${fmtMin(zeitAndereWoche + jetzt)} · Ziel 5 bis 10 h`;
+}
+
+// ---------- Toast ----------
+function toast(msg){
+  const t = $("toast");
+  t.textContent = "✓ Aufgabe erledigt: " + msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+// ---------- 3D: Team-Büro, eigenes Büro, Serverraum ----------
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let updateScene = null;
+let updateScreens = null;
+let scoutWaving = false;   // Nico winkt, wenn ein Auftrag offen ist oder Ideen ungeprüft sind
+let scoutText = "";
+let teamInfo = {laufend: false, bereit: false, ideen: 0};
+
+// Übersicht unter dem Büro: wer arbeitet, wartet, To-dos hat oder faulenzt
+function renderTeamStatus(){
+  const labels = {arbeitet: "Arbeitet", wartet: "Wartet", todo: "To-do", frei: "Faulenzt"};
+  const zeilen = ZONES.map(z => {
+    if (z.id === "scout") {
+      if (teamInfo.laufend) return {name: z.name, job: z.job, cls: "arbeitet", text: "Recherche läuft"};
+      if (teamInfo.bereit) return {name: z.name, job: z.job, cls: "wartet", text: "Auftrag bereit, wartet auf Start"};
+      if (teamInfo.ideen > 0) return {name: z.name, job: z.job, cls: "wartet", text: `${teamInfo.ideen} Ideen noch ungeprüft`};
+      return {name: z.name, job: z.job, cls: "frei", text: "Nichts zu tun"};
+    }
+    const offen = quests.filter(q => q.status !== "erledigt" && z.phases.includes(q.phase));
+    return offen.length
+      ? {name: z.name, job: z.job, cls: "todo", text: `${offen.length} offen · als Nächstes: ${offen[0].title}`}
+      : {name: z.name, job: z.job, cls: "frei", text: "Nichts offen"};
+  });
+  $("teamStatus").innerHTML = zeilen.map((r, i) => {
+    const z = ZONES[i];
+    const fig = pixFigure({...ASSIST_COLORS, H: z.hair, S: z.skin, T: z.top, A: z.top, P: z.pants});
+    return `<button type="button" class="tmember ${r.cls}" data-id="${z.id}" title="${esc(r.text)}">${fig}<span class="tinfo"><b>${esc(r.name)}<em>${labels[r.cls]}</em></b><small>${esc(r.text)}</small></span></button>`;
+  }).join("");
+}
+$("teamStatus").addEventListener("click", e => {
+  const b = e.target.closest(".tmember");
+  if (!b) return;
+  if (b.dataset.id === "scout") openPanel("produkte");
+  else { setFilter("offen"); openPanel("aufgaben"); }
+});
+let lastStats = {level:1, done:0, open:0, products:0, wissen:0};
+let sceneLayout = null;
+let updateServerLabel = () => {};
+const tags = [];
+const roomTags = [];
+
+function buildScene(){
+  const canvas = $("c");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true}); }
+  catch (e) { $("fb").hidden = false; return; }
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(ratio);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = null;                 // durchsichtig, damit die Seite nahtlos übergeht
+  renderer.setClearColor(0x000000, 0);
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
+  cam.position.set(30, 26, 30);
+  cam.lookAt(1.5, 0, 0);
+  scene.add(new THREE.HemisphereLight(0xdfe8f5, 0x1a1e26, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+  sun.position.set(-12, 24, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const sc = sun.shadow.camera; sc.left = -24; sc.right = 24; sc.top = 24; sc.bottom = -24; sc.near = 1; sc.far = 100;
+  sun.shadow.bias = -0.0008;
+  scene.add(sun);
+
+  const cache = {};
+  const mat = c => cache[c] || (cache[c] = new THREE.MeshLambertMaterial({color: c}));
+  const emit = c => cache["e" + c] || (cache["e" + c] = new THREE.MeshBasicMaterial({color: c}));
+  const place = (m, x, y, z, parent) => { m.castShadow = true; m.receiveShadow = true; m.position.set(x, y, z); (parent || scene).add(m); return m; };
+  const box = (w, h, d, c, x, y, z, parent) => place(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)), x, y, z, parent);
+  const glow = (c, w, h, d, x, y, z, parent) => place(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), emit(c)), x, y, z, parent);
+  const cyl = (rt, rb, h, c, x, y, z, parent, seg) => place(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 8), mat(c)), x, y, z, parent);
+
+  // Boden: dunkle Fläche, darauf die drei Räume als helle Platten
+  const ROOM = {
+    team:   {x0:-13, x1:-0.5, z0:-7, z1:7,   floor:0x1f2731},
+    chef:   {x0:1,   x1:6,    z0:-4, z1:4,   floor:0x222a35},
+    server: {x0:7,   x1:15.5, z0:-6, z1:6,   floor:0x18202a},
+  };
+  Object.entries(ROOM).forEach(([key, r]) => {
+    const w = r.x1 - r.x0, d = r.z1 - r.z0;
+    const floor = box(w, 0.12, d, r.floor, (r.x0 + r.x1) / 2, 0.02, (r.z0 + r.z1) / 2);
+    floor.userData.target = key === "server" ? "wissen" : (key === "team" ? "team" : "chef");
+    // Leuchtende Bodenkante
+    const edge = 0x4d8fb0;
+    glow(edge, w, 0.03, 0.08, (r.x0 + r.x1) / 2, 0.09, r.z0);
+    glow(edge, w, 0.03, 0.08, (r.x0 + r.x1) / 2, 0.09, r.z1);
+    glow(edge, 0.08, 0.03, d, r.x0, 0.09, (r.z0 + r.z1) / 2);
+    glow(edge, 0.08, 0.03, d, r.x1, 0.09, (r.z0 + r.z1) / 2);
+  });
+
+  // Wände: niedrig und frei stehend, mit Lücken als Durchgang
+  const WALL = 0x2a3440, WH = 1.3;
+  function wall(x0, x1, z0, z1){
+    box(Math.max(0.3, x1 - x0), WH, Math.max(0.3, z1 - z0), WALL, (x0 + x1) / 2, WH / 2, (z0 + z1) / 2);
+  }
+  // Team-Büro
+  wall(-13.15, -12.85, -7.15, 7.15);   // links
+  wall(-13.15, -0.35, -7.15, -6.85);   // hinten
+  wall(-13.15, -0.35, 6.85, 7.15);     // vorne
+  wall(-0.5, -0.2, -7.15, -1.0);       // rechts oben (Durchgang bei z -1 bis 1)
+  wall(-0.5, -0.2, 1.0, 7.15);         // rechts unten
+  // Eigenes Büro
+  wall(0.85, 1.15, -4.15, -1.0);       // links oben (Durchgang)
+  wall(0.85, 1.15, 1.0, 4.15);         // links unten
+  wall(0.85, 2.4, -4.15, -3.85);
+  wall(4.6, 6.15, -4.15, -3.85);      // hinten
+  wall(0.85, 6.15, 3.85, 4.15);        // vorne
+  wall(5.85, 6.15, -4.15, -1.0);
+  wall(5.85, 6.15, 1.0, 4.15);       // rechts
+  // Serverraum
+  wall(6.85, 7.15, -6.15, -1.0);       // links oben (Durchgang)
+  wall(6.85, 7.15, 1.0, 6.15);         // links unten
+  wall(6.85, 15.65, -6.15, -5.85);     // hinten
+  wall(6.85, 15.65, 5.85, 6.15);       // vorne
+  wall(15.35, 15.65, -6.15, 6.15);     // rechts
+
+  // Pflanzen
+  const LEAF = 0x6fa77a, LEAF2 = 0x8dc296, POT = 0xb97d55;
+  // Zimmerpflanzen aus Würfeln: "monstera", "philo" (Philodendron) oder "snake" (Bogenhanf)
+  // Blattformen aus vielen kleinen Würfeln ("#" = Würfel)
+  const LEAF_SHAPE = [
+    "...##...",
+    "..####..",
+    ".######.",
+    "########",
+    "##.##.##",
+    "########",
+    ".######.",
+    "..####..",
+    "...##...",
+  ];
+  const HEART_SHAPE = [
+    ".##..##.",
+    "########",
+    "########",
+    ".######.",
+    "..####..",
+    "...##...",
+  ];
+  const BLADE_SHAPE = [
+    ".#.",
+    ".#.",
+    "##.",
+    ".#.",
+    ".#.",
+    "##.",
+    ".#.",
+    ".#.",
+    ".#.",
+  ];
+  // Eine Blattform aus Würfeln, nach unten vom Anker aus aufgebaut
+  function voxelShape(shape, cx, cy, cz, cell, color, rotY, rotZ){
+    const g = new THREE.Group();
+    g.position.set(cx, cy, cz);
+    g.rotation.set(0, rotY, rotZ);
+    scene.add(g);
+    const cols = shape[0].length;
+    shape.forEach((row, r) => [...row].forEach((ch, c) => {
+      if (ch === "#") box(cell, cell, cell, color, (c - (cols - 1) / 2) * cell, -r * cell, 0, g);
+    }));
+  }
+  // Pflanze: Topf plus mehrere Blätter aus Mini-Würfeln
+  // "round" = Monstera, "hang" = Philodendron, "tall" = Bogenhanf
+  function plant(x, z, s, kind){
+    box(0.8 * s, 0.6 * s, 0.8 * s, POT, x, 0.3 * s, z);
+    const top = 0.6 * s;
+    const LEAVES = {
+      round: {cell: 0.1, parts: [[0, 0.85, 0, 0.3, 0, LEAF_SHAPE, LEAF], [0.3, 0.95, 0.12, -0.9, 0.25, LEAF_SHAPE, LEAF2], [-0.3, 0.9, -0.1, 1.1, -0.25, LEAF_SHAPE, LEAF2]]},
+      hang:  {cell: 0.08, parts: [[0, 0.7, 0, 0, 0, HEART_SHAPE, LEAF], [0.3, 0.45, 0.2, 0.6, 0.5, HEART_SHAPE, LEAF2], [-0.25, 0.35, 0.25, -0.5, -0.6, HEART_SHAPE, LEAF]]},
+      tall:  {cell: 0.09, parts: [[-0.15, 0.85, 0, 0, 0.1, BLADE_SHAPE, LEAF], [-0.05, 0.8, 0.05, 0, 0, BLADE_SHAPE, LEAF2], [0.08, 0.85, -0.03, 0, -0.12, BLADE_SHAPE, LEAF], [0.18, 0.75, 0.05, 0, 0.2, BLADE_SHAPE, LEAF2]]},
+    };
+    const def = LEAVES[kind] || LEAVES.round;
+    def.parts.forEach(([dx, dy, dz, ry, rz, shape, color]) => {
+      voxelShape(shape, x + dx * s, top + dy * s, z + dz * s, def.cell * s, color, ry, rz);
+    });
+  }
+  // Pflanzen: [x, z, Größe], in allen Räumen verteilt
+  const PLANTS = [
+    [-12.4, -6.3, 1], [-12.4, 6.3, 0.9], [-12.4, 0.2, 0.8], [-0.9, 6.3, 0.9],   // Team-Büro
+    [1.5, -3.2, 0.8], [5.3, 3.2, 0.9], [5.4, -3.1, 0.7],                       // Dein Büro
+    [14.7, 5, 0.8], [14.7, -5, 0.9], [7.6, -5.2, 0.8],                         // Serverraum
+  ];
+  const PLANT_KINDS = ["round", "hang", "tall", "tall", "hang", "round", "tall", "round", "hang", "tall"];
+  PLANTS.forEach(([x, z, s], i) => plant(x, z, s * 1.6, PLANT_KINDS[i]));
+
+  // Schreibtisch mit Monitor: Bildschirm zur Kamera-Seite, die Figur sitzt gegenüber
+  const WOOD = 0x8a7258, TOP = 0x6f6155;
+  function desk(x, z){
+    box(2.0, 0.12, 1.0, TOP, x, 0.95, z);
+    [[-0.85,-0.38],[0.85,-0.38],[-0.85,0.38],[0.85,0.38]].forEach(([dx, dz]) => box(0.12, 0.9, 0.12, WOOD, x + dx, 0.45, z + dz));
+    box(0.12, 0.45, 0.12, 0x2b3038, x, 1.2, z + 0.3);
+    box(0.95, 0.6, 0.08, 0x2b3038, x, 1.6, z + 0.3);
+    glow(0x7aa2c8, 0.85, 0.48, 0.02, x, 1.6, z + 0.26);
+    box(0.3, 0.3, 0.3, 0xd9d4c8, x + 0.7, 1.15, z - 0.1);
+  }
+  function chair(x, z){
+    box(0.8, 0.14, 0.8, 0x4a5260, x, 0.6, z - 0.9);
+    box(0.8, 0.9, 0.12, 0x4a5260, x, 1.1, z - 1.3);
+    box(0.12, 0.5, 0.12, 0x2b3038, x, 0.3, z - 0.9);
+  }
+
+  // Team-Büro: Aufgabenwand und Kaffeeecke
+  box(3.6, 1.9, 0.12, 0xd8dde4, BOARD.x, 2.3, BOARD.z);
+  box(3.6, 0.1, 0.2, 0x59606c, BOARD.x, 1.3, BOARD.z + 0.1);
+  [[0xbcd3c8,-1.1,2.8],[0xc9d6e6,-0.2,2.8],[0xd9cfe6,0.7,2.8],[0xe9d9c2,-0.7,2.2],[0xc2d8df,0.4,2.2],[0xe6cbd0,1.2,2.2]]
+    .forEach(([c, dx, y]) => box(0.7, 0.55, 0.04, c, BOARD.x + dx, y, BOARD.z + 0.1));
+  box(1.4, 1.4, 0.9, 0x4a5260, COFFEE.x, 0.7, COFFEE.z);
+  box(1.6, 0.12, 1.0, 0x6f6155, COFFEE.x, 1.44, COFFEE.z);
+  glow(0x7aa2c8, 0.3, 0.2, 0.05, COFFEE.x - 0.3, 1.6, COFFEE.z + 0.5);
+
+  // Eigenes Büro: Fenster mit Licht und Pflanze
+  box(3.2, 1.8, 0.1, 0x2a3a4a, 3.5, 2.0, -4.12);
+  glow(0x7aa2c8, 2.9, 1.5, 0.06, 3.5, 2.0, -4.1);
+
+  // Serverraum: Racks mit blinkenden LEDs
+  const RACKS = [];
+  [-4.0, 1.4].forEach(z => [8.6, 10.4, 12.2, 14.0].forEach(x => {
+    const rack = box(0.9, 2.6, 0.9, 0x242b35, x, 1.3, z);
+    rack.userData.target = "wissen";
+    for (let k = 0; k < 6; k++) {
+      const col = [0x7aa2c8, 0x7fbf9a, 0xd9b26a][(k + Math.floor(x)) % 3];
+      const led = glow(col, 0.1, 0.07, 0.03, x + 0.2 - (k % 2) * 0.4, 0.5 + Math.floor(k / 2) * 0.7, z + 0.47);
+      led.userData.base = col;
+      RACKS.push(led);
+    }
+  }));
+  // Terminal in der Mitte des Serverraums
+  box(2.0, 0.12, 1.0, TOP, 11.25, 0.95, 0.4);
+  glow(0x7aa2c8, 0.9, 0.5, 0.03, 11.25, 1.5, 0.4 - 0.25);
+  box(0.12, 0.8, 0.12, WOOD, 10.4, 0.5, 0.4);
+  box(0.12, 0.8, 0.12, WOOD, 12.1, 0.5, 0.4);
+
+  // Raum-Schilder
+  function roomLabel(text, x, z, icon){
+    const el = document.createElement("div");
+    el.className = "roomtag";
+    el.innerHTML = `<span class="rico">${icon}</span><span class="rname">${esc(text)}</span>`;
+    $("labels").appendChild(el);
+    roomTags.push({el, pos: new THREE.Vector3(x, 0.2, z)});
+    return el;
+  }
+  const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${d}</svg>`;
+  const ICON_TEAM = SVG('<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15 20a4 4 0 0 1 6 0"/>');
+  const ICON_DEIN = SVG('<path d="M5 18h14M9 18l3-7 4 2M14 9l3-4"/>');
+  const ICON_SERVER = SVG('<rect x="5" y="3" width="14" height="6" rx="1"/><rect x="5" y="11" width="14" height="6" rx="1"/><path d="M8 6h.01M8 14h.01"/>');
+  roomLabel("Team-Büro", -6.75, 6.4, ICON_TEAM);
+  roomLabel("Dein Büro", 3.5, 3.4, ICON_DEIN);
+  const serverLabel = roomLabel("Serverraum", 11.25, 5.4, ICON_SERVER);
+  updateServerLabel = () => { serverLabel.querySelector(".rname").textContent = `Serverraum · ${wissen.length} Wissenseinträge`; };
+
+  // Assistent: eigener kleiner Raum mit einer stehenden Figur, die dich anschaut
+  const AS = {x: 3.5, z: -8.6};
+  box(6.2, 0.12, 4.6, 0x222a35, AS.x, 0.02, AS.z);
+  box(6.2, WH, 0.3, WALL, AS.x, WH / 2, AS.z - 2.3);
+  box(0.3, WH, 4.6, WALL, AS.x - 3.1, WH / 2, AS.z);
+  const ag = new THREE.Group();
+  ag.position.set(AS.x, 0.1, AS.z);
+  scene.add(ag);
+  box(0.24, 0.62, 0.26, 0x2b3440, -0.14, 0.4, 0, ag);
+  box(0.24, 0.62, 0.26, 0x2b3440, 0.14, 0.4, 0, ag);
+  box(0.54, 0.62, 0.3, 0x5fd4ff, 0, 1.04, 0, ag);
+  box(0.18, 0.56, 0.18, 0x5fd4ff, -0.38, 1.05, 0, ag);
+  box(0.18, 0.56, 0.18, 0x5fd4ff, 0.38, 1.05, 0, ag);
+  box(0.5, 0.5, 0.5, 0xc8a58a, 0, 1.66, 0, ag);
+  box(0.54, 0.18, 0.54, 0x4a3b30, 0, 1.93, -0.02, ag);
+  box(0.08, 0.1, 0.03, 0x2f2a27, -0.12, 1.66, 0.26, ag);
+  box(0.08, 0.1, 0.03, 0x2f2a27, 0.12, 1.66, 0.26, ag);
+  // Pflanzen im Assistenten-Raum
+  plant(AS.x - 2.6, AS.z + 1.5, 1.6, "round");
+  plant(AS.x - 2.6, AS.z - 1.5, 1.6, "tall");
+
+  // Fenster: helle Scheiben in den Wänden, die Licht in die Räume lassen
+  const GLASS = new THREE.MeshBasicMaterial({color: 0x9fd6ea});
+  const pane = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), GLASS); m.position.set(x, y, z); scene.add(m); return m; };
+  pane(2.2, 0.7, 0.05, -8, 0.95, 7.18);     // Team-Büro, vordere Wand
+  pane(2.2, 0.7, 0.05, -10.6, 0.95, -6.8);  // Team-Büro, Rückwand
+  pane(0.05, 0.7, 2.2, 15.7, 0.95, -2);     // Serverraum, rechte Wand
+  pane(2.2, 0.7, 0.05, 11, 0.95, 6.18);     // Serverraum, vordere Wand
+  pane(2.2, 0.7, 0.05, 3.5, 0.95, -10.7);   // Assistenten-Raum, Rückwand
+
+  // Licht, das durch die Fenster auf den Boden fällt: warme, halbtransparente Flächen
+  const SUN = new THREE.MeshBasicMaterial({color: 0xfff1cf, transparent: true, opacity: 0.16, depthWrite: false});
+  const sunPatch = (w, d, x, z) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), SUN);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0.15, z);
+    scene.add(m);
+  };
+  sunPatch(2.6, 1.6, -8, 5.8);      // Team-Büro, vorn
+  sunPatch(2.4, 1.6, -10.6, -5.6);  // Team-Büro, hinten
+  sunPatch(1.6, 2.6, 14.2, -2);     // Serverraum, rechts
+  sunPatch(2.6, 1.6, 11, 4.9);      // Serverraum, vorn
+  sunPatch(2.6, 1.4, 3.5, -9.2);    // Assistenten-Raum
+
+  // Gang vom eigenen Büro zum Assistenten-Raum und Arbeitsplatz
+  box(4, 0.12, 2.2, 0x1f2731, AS.x, 0.02, -5.2);
+  box(1.2, 0.12, 2.2, 0x1f2731, 6.5, 0.02, 0);   // Durchgang zum Serverraum
+  desk(AS.x + 1.9, AS.z);
+  chair(AS.x + 1.9, AS.z);
+
+  // Die Meldung des Assistenten schwebt über seiner Figur
+  const bubble = $("assist");
+  $("labels").appendChild(bubble);
+  roomTags.push({el: bubble, pos: new THREE.Vector3(AS.x, 2.6, AS.z)});
+
+  // Bildschirme in den Räumen: zeigen die Zahlen aus dem Hub
+  function screen(w, h, px){
+    const c = document.createElement("canvas");
+    c.width = px[0]; c.height = px[1];
+    const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;     // kein Weichzeichnen beim Verkleinern
+    tex.generateMipmaps = false;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map: tex}));
+    scene.add(mesh);
+    return {mesh, c, tex, ctx: c.getContext("2d")};
+  }
+  function paint(s, rows){
+    const {c, ctx, tex} = s;
+    ctx.fillStyle = "#0b1620"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.strokeStyle = "#5fd4ff"; ctx.lineWidth = 6; ctx.strokeRect(6, 6, c.width - 12, c.height - 12);
+    ctx.textAlign = "center";
+    rows.forEach((r, i) => {
+      const x = c.width * (i + 0.5) / rows.length;
+      ctx.fillStyle = "#9fdcf0"; ctx.font = `bold ${Math.round(c.height * 0.2)}px monospace`;
+      ctx.fillText(r.label, x, c.height * 0.36);
+      ctx.fillStyle = "#ffffff"; ctx.font = `bold ${Math.round(c.height * 0.5)}px monospace`;
+      ctx.fillText(String(r.value), x, c.height * 0.82);
+    });
+    tex.needsUpdate = true;
+  }
+  const chefScreen = screen(4.2, 2.1, [768, 384]);     chefScreen.mesh.position.set(CHEF.x, 2.0, -3.7);
+  const serverScreen = screen(5.6, 1.5, [896, 240]);   serverScreen.mesh.position.set(11.25, 3.0, -5.7);
+  const teamScreen = screen(3.2, 1.6, [640, 320]);     teamScreen.mesh.position.set(-2.6, 2.4, -6.75);
+  updateScreens = s => {
+    paint(chefScreen, [{label:"LEVEL", value:s.level}, {label:"ERLEDIGT", value:s.done}]);
+    paint(serverScreen, [{label:"WISSEN", value:s.wissen}, {label:"PRODUKTE", value:s.products}]);
+    paint(teamScreen, [{label:"OFFEN", value:s.open}, {label:"ERLEDIGT", value:s.done}]);
+  };
+  updateScreens(lastStats);
+
+  // Figur aus Würfeln: Kopf mit Haaren und Gesicht, Körper, Arme und Beine mit Gelenk
+  ZONES.forEach(z => { desk(z.x, z.z); chair(z.x, z.z); });
+  desk(CHEF.x, CHEF.z); chair(CHEF.x, CHEF.z);
+
+  const walkers = [];
+  function person(p, index){
+    const g = new THREE.Group();
+    g.position.set(p.x, 0.1, p.z - 0.9);
+    g.userData.target = p.id === "chef" ? "chef" : p.id === "scout" ? "scout" : "team";
+    const SKIN = parseInt(p.skin.slice(1), 16), HAIR = parseInt(p.hair.slice(1), 16);
+    const TOP_C = parseInt(p.top.slice(1), 16), PANTS = parseInt(p.pants.slice(1), 16);
+    const SHOE = 0x3b3631, EYE = 0x2f2a27, MOUTH = 0xb0705a;
+    const legs = [-1, 1].map(side => {
+      const hip = new THREE.Group();
+      hip.position.set(side * 0.14, 0.71, 0);
+      g.add(hip);
+      box(0.24, 0.62, 0.26, PANTS, 0, -0.31, 0, hip);
+      box(0.26, 0.1, 0.3, SHOE, 0, -0.65, 0.03, hip);
+      return hip;
+    });
+    box(0.54, 0.62, 0.3, TOP_C, 0, 1.04, 0, g);
+    const makeArm = side => {
+      const pivot = new THREE.Group();
+      pivot.position.set(side * 0.38, 1.25, 0);
+      g.add(pivot);
+      box(0.18, 0.56, 0.18, TOP_C, 0, -0.28, 0, pivot);
+      box(0.18, 0.16, 0.18, SKIN, 0, -0.66, 0, pivot);
+      return pivot;
+    };
+    const armL = makeArm(-1), armR = makeArm(1);
+    box(0.5, 0.5, 0.5, SKIN, 0, 1.66, 0, g);
+    box(0.54, 0.18, 0.54, HAIR, 0, 1.93, -0.02, g);
+    box(0.54, 0.16, 0.14, HAIR, 0, 1.82, 0.22, g);
+    if (p.longHair) {
+      // Lange Haare: hinten bis über die Schultern, seitlich am Gesicht entlang
+      box(0.58, 0.66, 0.16, HAIR, 0, 1.5, -0.25, g);
+      box(0.1, 0.52, 0.46, HAIR, -0.28, 1.58, -0.02, g);
+      box(0.1, 0.52, 0.46, HAIR, 0.28, 1.58, -0.02, g);
+    }
+    box(0.08, 0.1, 0.03, EYE, -0.12, 1.66, 0.26, g);
+    box(0.08, 0.1, 0.03, EYE, 0.12, 1.66, 0.26, g);
+    box(0.14, 0.04, 0.03, MOUTH, 0, 1.52, 0.26, g);
+    scene.add(g);
+    const w = {g, armL, armR, legs, index, home:{x:p.x, z:p.z - 0.9}, path:[], wait:0, facing:0, phases:p.phases || []};
+    walkers.push(w);
+  }
+  function tag(p, y, cls){
+    const el = document.createElement("div");
+    el.className = "tag " + (cls || "");
+    el.innerHTML = tagHtml(p);
+    $("labels").appendChild(el);
+    p.tagEl = el;
+    // Klick aufs Schild öffnet dasselbe wie ein Klick auf die Figur
+    el.style.pointerEvents = "auto";
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => {
+      if (p.id === "scout") openPanel("produkte");
+      else if (p.id === "chef") { setFilter("offen"); openPanel("aufgaben"); }
+      else openPanel("team");
+    });
+    tags.push({el, pos: new THREE.Vector3(p.x, y, p.z)});
+  }
+  ZONES.forEach((z, i) => { person(z, i); tag(z, 3.3); });
+  person(CHEF, 9); tag(CHEF, 3.3, "you");
+
+  // Hindernisse für die Wegfindung
+  const OBST = [];
+  [...ZONES, CHEF].forEach(z => OBST.push({x0:z.x-1.05, x1:z.x+1.05, z0:z.z-0.6, z1:z.z+0.6}));
+  OBST.push({x0:BOARD.x-1.9, x1:BOARD.x+1.9, z0:BOARD.z-0.3, z1:BOARD.z+0.3});
+  OBST.push({x0:COFFEE.x-0.8, x1:COFFEE.x+0.8, z0:COFFEE.z-0.6, z1:COFFEE.z+0.6});
+  PLANTS.forEach(([x, z]) => OBST.push({x0:x-0.6, x1:x+0.6, z0:z-0.6, z1:z+0.6}));
+  // Wände als Hindernisse (Durchgänge bleiben frei)
+  [[-13.15,-12.85,-7.15,7.15],[-13.15,-0.35,-7.15,-6.85],[-13.15,-0.35,6.85,7.15],[-0.5,-0.2,-7.15,-1.0],[-0.5,-0.2,1.0,7.15],
+   [0.85,1.15,-4.15,-1.0],[0.85,1.15,1.0,4.15],[0.85,2.4,-4.15,-3.85],[4.6,6.15,-4.15,-3.85],[0.85,6.15,3.85,4.15],[5.85,6.15,-4.15,-1.0],[5.85,6.15,1.0,4.15],
+   [6.85,7.15,-6.15,-1.0],[6.85,7.15,1.0,6.15],[6.85,15.65,-6.15,-5.85],[6.85,15.65,5.85,6.15],[15.35,15.65,-6.15,6.15]]
+    .forEach(([x0, x1, z0, z1]) => OBST.push({x0, x1, z0, z1}));
+
+  // Gitter mit 0,5er-Schritten
+  const STEP = 0.5, X_MIN = -14, Z_MIN = -8, NX = 61, NZ = 33;
+  const cellOk = (i, j) => {
+    if (i < 0 || j < 0 || i >= NX || j >= NZ) return false;
+    const x = X_MIN + i * STEP, z = Z_MIN + j * STEP;
+    return !OBST.some(r => x >= r.x0 - 0.3 && x <= r.x1 + 0.3 && z >= r.z0 - 0.3 && z <= r.z1 + 0.3);
+  };
+  function findPath(fx, fz, tx, tz){
+    const si = Math.round((fx - X_MIN) / STEP), sj = Math.round((fz - Z_MIN) / STEP);
+    const ti = Math.round((tx - X_MIN) / STEP), tj = Math.round((tz - Z_MIN) / STEP);
+    const key = (i, j) => i * NZ + j;
+    const prev = new Map([[key(si, sj), null]]);
+    const queue = [[si, sj]];
+    let found = false;
+    for (let q = 0; q < queue.length; q++) {
+      const [i, j] = queue[q];
+      if (i === ti && j === tj) { found = true; break; }
+      for (const [di, dj] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const ni = i + di, nj = j + dj, k = key(ni, nj);
+        if (prev.has(k)) continue;
+        if (!(cellOk(ni, nj) || (ni === ti && nj === tj))) continue;
+        prev.set(k, key(i, j));
+        queue.push([ni, nj]);
+      }
+    }
+    if (!found) return [];
+    const pts = [];
+    let k = key(ti, tj);
+    while (k !== key(si, sj)) {
+      const i = Math.floor(k / NZ), j = k % NZ;
+      pts.unshift({x: X_MIN + i * STEP, z: Z_MIN + j * STEP});
+      k = prev.get(k);
+    }
+    return pts;
+  }
+  function tripTo(w, tx, tz, wait){
+    const out = findPath(w.g.position.x, w.g.position.z, tx, tz);
+    if (!out.length) return;
+    out[out.length - 1] = {x: tx, z: tz, wait};
+    const back = findPath(tx, tz, w.home.x, w.home.z);
+    if (back.length) back[back.length - 1] = {x: w.home.x, z: w.home.z};
+    w.path = [...out, ...back];
+  }
+  function boardTrip(w){ tripTo(w, BOARD.x + (w.index % 3 - 1) * 0.9, BOARD.z + 1.8, 2.5); }
+  function coffeeTrip(w){ tripTo(w, COFFEE.x - 1.3, COFFEE.z, 2); }
+
+  // Wenn eine Aufgabe erledigt wird, läuft die passende Figur zur Aufgabenwand
+  let knownDone = null;
+  updateScene = qs => {
+    const done = new Set(qs.filter(q => q.status === "erledigt").map(q => String(q.id)));
+    if (knownDone) {
+      for (const q of qs) {
+        if (done.has(String(q.id)) && !knownDone.has(String(q.id))) {
+          const w = walkers.find(x => x.phases.includes(q.phase) && x.index !== 9) || walkers[0];
+          boardTrip(w);
+        }
+      }
+    }
+    knownDone = done;
+  };
+  setInterval(() => {
+    if (reduceMotion) return;
+    // Nico bleibt am Schreibtisch, er holt keinen Kaffee
+    const idle = walkers.filter(w => !w.path.length && w.index !== 9 && w.index !== 0);
+    if (idle.length) coffeeTrip(idle[Math.floor(Math.random() * idle.length)]);
+  }, 11000);
+
+  // Klick: Raum oder Figur öffnet den passenden Bereich
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  function findTarget(obj){
+    while (obj) { if (obj.userData && obj.userData.target) return obj.userData.target; obj = obj.parent; }
+    return null;
+  }
+  canvas.addEventListener("click", e => {
+    const r = canvas.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, cam);
+    const hits = raycaster.intersectObjects(scene.children, true);
+    for (const h of hits) {
+      const t = findTarget(h.object);
+      if (!t) continue;
+      if (t === "wissen") openPanel("wissen");
+      else if (t === "scout") openPanel("produkte");
+      else { setFilter("offen"); openPanel("aufgaben"); }
+      break;
+    }
+  });
+
+  // Größe neu berechnen, damit das Bild die drei Räume ganz zeigt
+  function layout(){
+    const el = $("scene");
+    const w = el.clientWidth, h = el.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    const a = w / h;
+    const s = Math.max(18, 31 / a);
+    cam.left = -s * a / 2; cam.right = s * a / 2; cam.top = s / 2; cam.bottom = -s / 2;
+    cam.updateProjectionMatrix();
+  }
+  sceneLayout = layout;
+  layout();
+  window.addEventListener("resize", layout);
+
+  let last = performance.now();
+  function frame(t){
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    const el = $("scene");
+    const w = el.clientWidth, h = el.clientHeight;
+    if (w && h && (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(h * ratio))) layout();
+
+    // Serverlichter blinken
+    if (!reduceMotion) RACKS.forEach((led, i) => {
+      const on = Math.sin(t / 300 + i * 2.3) > -0.2;
+      led.material.color.setHex(on ? led.userData.base : 0x20262e);
+    });
+
+    walkers.forEach(v => {
+      let moving = false;
+      if (v.wait > 0) { v.wait -= dt; }
+      else if (v.path.length) {
+        const tg = v.path[0];
+        const dx = tg.x - v.g.position.x, dz = tg.z - v.g.position.z;
+        const d = Math.hypot(dx, dz), step = 1.8 * dt;
+        if (d <= step) {
+          v.g.position.x = tg.x; v.g.position.z = tg.z;
+          v.path.shift();
+          if (tg.wait) v.wait = tg.wait;
+        } else {
+          v.g.position.x += dx / d * step; v.g.position.z += dz / d * step;
+          v.facing = Math.atan2(dx, dz);
+          moving = true;
+        }
+      }
+      const atHome = !v.path.length && v.wait <= 0;
+      if (atHome) v.facing = 0;
+      v.g.rotation.y += (v.facing - v.g.rotation.y) * Math.min(1, dt * 8);
+      v.legs.forEach(l => { l.rotation.x = atHome ? -Math.PI / 2 : 0; });
+      v.g.position.y = 0.1 + (moving ? Math.abs(Math.sin(t / 110)) * 0.06 : (reduceMotion ? 0 : Math.sin(t / 800 + v.index) * 0.015));
+      const swing = moving ? Math.sin(t / 110) * 0.7 : (reduceMotion ? 0 : Math.sin(t / 900 + v.index) * 0.04);
+      v.armL.rotation.x = swing;
+      v.armR.rotation.x = -swing;
+      // Nico winkt mit dem rechten Arm, solange ein Auftrag offen ist
+      if (v.index === 0) v.armR.rotation.z = (scoutWaving && !moving) ? -2.2 + Math.sin(t / 180) * 0.25 : 0;
+    });
+
+    if (w && h) renderer.render(scene, cam);
+    const project = (pos, el) => {
+      const v = pos.clone().project(cam);
+      const x = (v.x + 1) / 2 * w, y = (1 - v.y) / 2 * h;
+      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+    };
+    tags.forEach(tg => project(tg.pos, tg.el));
+    roomTags.forEach(tg => project(tg.pos, tg.el));
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Menü: Pixel-Symbole und deine Figur einsetzen
+document.querySelectorAll(".nico[data-icon]").forEach(el => { el.innerHTML = pixIcon(el.dataset.icon); });
+$("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb3", T: "#e7d7b8", A: "#e7d7b8", P: "#5a5046"}, CORINNA_MAP);
+
+// ---------- Panels ----------
+const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Aufgaben":"aufgaben","Produkt-Recherche":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
+document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
+function openPanel(key){
+  document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
+  const title = Object.keys(PANEL_KEYS).find(k => PANEL_KEYS[k] === key) || "";
+  $("dTitle").textContent = title;
+  $("drawer").classList.add("open");
+  $("drawer").scrollTop = 0;
+  $("veil").classList.add("on");
+  document.querySelectorAll("[data-open]").forEach(b => b.classList.toggle("on", b.dataset.open === key));
+}
+document.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.open)));
+function closeDrawer(){
+  $("drawer").classList.remove("open"); $("veil").classList.remove("on");
+  document.querySelectorAll("[data-open]").forEach(b => b.classList.remove("on"));
+}
+$("dClose").addEventListener("click", closeDrawer);
+$("veil").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+buildScene();
+
+// Dezente Uhr in der Arbeitszeit-Karte
+function tickUhr(){
+  const d = new Date();
+  const s = d.getSeconds(), m = d.getMinutes(), h = d.getHours() % 12;
+  $("hS").setAttribute("transform", `rotate(${s * 6} 50 50)`);
+  $("hM").setAttribute("transform", `rotate(${(m + s / 60) * 6} 50 50)`);
+  $("hH").setAttribute("transform", `rotate(${(h + m / 60) * 30} 50 50)`);
+}
+tickUhr();
+setInterval(tickUhr, 1000);
+
+// Start: Sitzung prüfen
+sb.auth.getSession().then(({ data }) => data.session ? showApp() : showLogin());
+</script>
+</body>
+</html>
