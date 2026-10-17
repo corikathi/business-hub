@@ -1638,13 +1638,15 @@ async function loadAuftraege(){
   // Aufträge als Karten: am weitesten fortgeschritten oben, fertige zusammengeklappt unten
   const aktiv = (data || []).filter(a => a.status !== "fertig")
     .sort((a, b) => (b.stufe || 0) - (a.stufe || 0) || zustandRang(a) - zustandRang(b));
-  const erledigt = (data || []).filter(a => a.status === "fertig");
+  // Verworfene werden nicht angezeigt, fertige bleiben zusammengeklappt
+  const erledigt = (data || []).filter(a => a.status === "fertig" && !/^Verworfen/i.test(a.fortschritt || ""));
   // Drei Gruppen: was auf dich wartet, was bei Nico läuft, und der Rest zusammengeklappt
   const warteAufDich = aktiv.filter(a => auftragZustand(a) === "du");
   const beiNico = aktiv.filter(a => auftragZustand(a) !== "du");
   const gruppe = (titel, liste) => liste.length ? `<h3 class="phase">${titel} (${liste.length})</h3>` + liste.map(a => auftragKarte(a, true)).join("") : "";
-  $("auftraege").innerHTML = (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Keine offenen Aufträge.</div>`;
-  $("auftraege").innerHTML += (erledigt.length ? `<details class="aufklapp"><summary>Fertig und verworfen (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
+  const offen = aktiv.length;
+  $("auftraege").innerHTML = (offen ? `<h3 class="phase">Noch offen (${offen})</h3>` : "") + (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Keine offenen Aufträge.</div>`;
+  $("auftraege").innerHTML += (erledigt.length ? `<details class="aufklapp"><summary>Fertig (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
   zeigeNicoHinweis();
 }
 
