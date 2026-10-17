@@ -1489,7 +1489,7 @@ async function loadAuftraege(){
   teamInfo.befehl = (offenBefehl || []).length;
   renderTeamStatus();
   scoutText = (offenBefehl || []).length
-    ? "Befehl gesendet, wartet auf Abholung"
+    ? `Befehl gesendet, Nico prüft ca. ${naechstePruefung()}`
     : laufend
     ? `Recherche läuft: ${laufend.fortschritt || "gleich geht es los"}`
     : bereit
@@ -1506,7 +1506,7 @@ async function loadAuftraege(){
   // Solange ein Befehl im Hub auf Abholung wartet, sagt die Zeile das sofort
   const { data: offeneBefehle } = await sb.from("agent_befehle").select("id").eq("erledigt", false);
   const befehlText = (offeneBefehle || []).length
-    ? `Befehl gesendet, Nico holt ihn bald ab (${offeneBefehle.length} wartend)`
+    ? `Befehl gesendet, Nico prüft ca. ${naechstePruefung()} (${offeneBefehle.length} wartend)`
     : (scoutText || "Gerade nichts offen");
   const scoutZeile = `<div class="scout-zeile"><b>Nico (Scout)</b><small>${esc(befehlText)}</small></div>`;
   // Gleiche Knöpfe wie im Agenten-Panel: Starten, Stoppen, Fertig
@@ -1666,12 +1666,20 @@ let scoutWaving = false;   // Nico winkt, wenn ein Auftrag offen ist oder Ideen 
 let scoutText = "";
 let teamInfo = {laufend: false, bereit: false, ideen: 0};
 
+// Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
+function naechstePruefung(){
+  const d = new Date();
+  const viertel = Math.ceil((d.getMinutes() + 0.01) / 15) * 15;
+  d.setMinutes(viertel + 5, 0, 0);
+  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+}
+
 // Übersicht unter dem Büro: wer arbeitet, wartet, To-dos hat oder faulenzt
 function renderTeamStatus(){
   const labels = {arbeitet: "Arbeitet", wartet: "Wartet", todo: "To-do", frei: "Faulenzt"};
   const zeilen = ZONES.map(z => {
     if (z.id === "scout") {
-      if (teamInfo.befehl) return {name: z.name, job: z.job, cls: "wartet", text: "Befehl gesendet, holt ihn bald ab"};
+      if (teamInfo.befehl) return {name: z.name, job: z.job, cls: "wartet", text: `Befehl gesendet, Nico prüft ca. ${naechstePruefung()}`};
       if (teamInfo.laufend) return {name: z.name, job: z.job, cls: "arbeitet", text: "Recherche läuft"};
       if (teamInfo.bereit) return {name: z.name, job: z.job, cls: "wartet", text: "Auftrag bereit, wartet auf Start"};
       if (teamInfo.ideen > 0) return {name: z.name, job: z.job, cls: "wartet", text: `${teamInfo.ideen} Ideen noch ungeprüft`};
