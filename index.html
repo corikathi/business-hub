@@ -1646,9 +1646,9 @@ const ZUSTAND_TEXT = {arbeitet: "Arbeitet", du: "Du bist dran", nico: "Wartet au
 // Nicos Frage gegliedert: was passiert ist, Ergebnis als Punkte, Empfehlung mit Grund, Frage
 function frageHtml(frage, empfehlung){
   const zeilen = String(frage || "").split("\n").map(z => z.trim()).filter(Boolean);
-  const punkte = zeilen.filter(z => /^[-•]s/.test(z)).map(z => `<li>${esc(z.replace(/^[-•]s*/, ""))}</li>`).join("");
+  const punkte = zeilen.filter(z => /^[-•]\s/.test(z)).map(z => `<li>${esc(z.replace(/^[-•]\s*/, ""))}</li>`).join("");
   const warum = zeilen.find(z => /^Warum:/i.test(z));
-  const einleitung = zeilen.filter(z => !/^[-•]s/.test(z) && !/^Warum:/i.test(z)).map(esc).join("<br>");
+  const einleitung = zeilen.filter(z => !/^[-•]\s/.test(z) && !/^Warum:/i.test(z)).map(esc).join("<br>");
   return `<div class="ak-frage">${einleitung}</div>`
     + (punkte ? `<div class="ak-teil"><b>Ergebnis</b><ul class="ak-punkte">${punkte}</ul></div>` : "")
     + (empfehlung ? `<div class="ak-empfehlung"><b>⭐ Empfehlung: ${esc(empfehlung)}</b>${warum ? `<span>${esc(warum)}</span>` : ""}</div>` : "")
