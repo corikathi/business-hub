@@ -1489,17 +1489,15 @@ $("rechercheForm").addEventListener("submit", async e => {
   e.preventDefault();
   const thema = $("rThema").value.trim();
   if (!thema) return;
-  const { error } = await sb.from("recherche_auftraege").insert({ thema });
+  const { data: neu, error } = await sb.from("recherche_auftraege")
+    .insert({ thema, status: "offen", fortschritt: "Im Hub angelegt, wartet auf den Agenten" }).select("id").single();
   if (error) return showProdErr("Auftrag konnte nicht angelegt werden: " + error.message);
-  const befehl = `Recherchiere „${thema}“ nach dem Handbuch fba-produktrecherche und lege das Ergebnis in buero/recherche ab. Verwende als Auftrag genau: ${thema}`;
-  let kopiert = false;
-  try { await navigator.clipboard.writeText(befehl); kopiert = true; } catch {}
-  $("rHinweis").textContent = kopiert
-    ? "Auftrag angelegt. Der Befehl für Claude ist kopiert. Füge ihn in einer neuen Claude-Unterhaltung ein."
-    : `Auftrag angelegt. Schreib in einer neuen Claude-Unterhaltung: ${befehl}`;
+  if (!(await befehlSenden("scout", "start", thema, neu.id))) return;
+  $("rHinweis").textContent = `Auftrag „${thema}“ angelegt. Nico holt den Befehl ab.`;
   $("rThema").value = "";
   showProdErr("");
   loadAuftraege();
+  loadAgenten();
 });
 
 $("wissenForm").addEventListener("submit", async e => {
