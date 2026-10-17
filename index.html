@@ -1864,18 +1864,16 @@ let nicoScreenPos = () => null;   // wird im 3D-Teil gesetzt
 function openNico(){
   nicoFokus(true);
   renderNicoKarte();
-  // Erst zoomt die Kamera auf Nico, danach erscheint das Fenster direkt an seiner Stelle
-  setTimeout(() => {
-    placeNicoDrawer();
-    openPanel("nico");
-    $("veil").classList.remove("on");
-    requestAnimationFrame(() => requestAnimationFrame(() => { $("drawer").style.transition = ""; }));
-  }, 1300);
+  // Nach dem Zoom steht Nico in der Mitte des Bildes, dort öffnet das Fenster sofort
+  placeNicoDrawer();
+  openPanel("nico");
+  $("veil").classList.remove("on");
+  requestAnimationFrame(() => requestAnimationFrame(() => { $("drawer").style.transition = ""; }));
 }
 function placeNicoDrawer(){
-  const p = nicoScreenPos();
+  const r = $("scene").getBoundingClientRect();
+  const p = {x: r.left + r.width / 2, y: r.top + r.height / 2};
   const d = $("drawer");
-  if (!p) return;
   const breite = Math.min(900, innerWidth - 24);
   d.style.transition = "none";
   d.style.width = breite + "px";
@@ -2472,11 +2470,11 @@ function buildScene(){
 
     // Kamera: fährt bei einem Klick auf Nico auf ihn zu und folgt ihm, zurück zum Büro beim Schließen
     const ziel = nicoZoom && walkers[0] ? {x: walkers[0].g.position.x, z: walkers[0].g.position.z} : homeT;
-    camT.x += (ziel.x - camT.x) * 0.08;
-    camT.z += (ziel.z - camT.z) * 0.08;
+    camT.x += (ziel.x - camT.x) * 0.14;
+    camT.z += (ziel.z - camT.z) * 0.14;
     cam.position.set(camT.x + 28.5, 26, camT.z + 30);
     cam.lookAt(camT.x, 0, camT.z);
-    cam.zoom += ((nicoZoom ? 2.6 : 1) - cam.zoom) * 0.08;
+    cam.zoom += ((nicoZoom ? 2.6 : 1) - cam.zoom) * 0.14;
     cam.updateProjectionMatrix();
 
     if (w && h) renderer.render(scene, cam);
