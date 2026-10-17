@@ -146,6 +146,8 @@ button.nchip.late{border-color:var(--red)}
 .auftrag-karte.st-du .ak-balken i.voll{background:var(--warn)}
 .auftrag-karte.st-fertig .ak-balken i.voll{background:var(--ok)}
 .ak-stufe{font-size:11px;color:var(--muted)}
+.ak-frage{font-size:13px;white-space:pre-line;line-height:1.5}
+.ak-empfehlung{font-size:13px;font-weight:700;color:var(--warn)}
 .ak-text{font-size:13px}
 .ak-text b{color:var(--warn)}
 /* Aufträge mit Knöpfen: Text oben, Knöpfe darunter, nichts überlagert sich */
@@ -899,8 +901,10 @@ function renderRichtungen(){
   $("richtungen").innerHTML = RICHTUNGEN.map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
 }
 
-async function befehlSenden(agent, aktion, thema, auftragId){
-  const { error } = await sb.from("agent_befehle").insert({ agent, aktion, thema, auftrag_id: auftragId || null });
+async function befehlSenden(agent, aktion, thema, auftragId, wert){
+  const zeile = { agent, aktion, thema, auftrag_id: auftragId || null };
+  if (wert) zeile.wert = wert;
+  const { error } = await sb.from("agent_befehle").insert(zeile);
   if (error) { showErr("Befehl konnte nicht gespeichert werden: " + error.message); return false; }
   return true;
 }
@@ -954,6 +958,15 @@ async function agentAktion(e){
   if (act === "ergebnis") {
     closeDrawer();
     return openPanel("produkte");
+  }
+  if (act === "antwort") {
+    const wert = btn.dataset.wert;
+    const { error } = await sb.from("recherche_auftraege")
+      .update({ status: "offen", wartet_auf: "nico", fortschritt: `Deine Wahl: ${wert}. Nico holt sie bald ab`, frage: null, optionen: null, empfehlung: null }).eq("id", id);
+    if (error) return showErr("Antwort konnte nicht gespeichert werden: " + error.message);
+    if (!(await befehlSenden("scout", "antwort", thema, id, wert))) return;
+    loadAgenten();
+    return loadAuftraege();
   }
   if (act === "fertig" || act === "verwerfen") {
     const text = act === "fertig" ? "Von Corinna abgeschlossen" : "Verworfen von Corinna";
@@ -1630,7 +1643,9 @@ function auftragKarte(a, mitKnoepfen){
   const stufe = a.stufe || 0;
   const balken = STUFEN_NAMEN.map((name, i) => `<i class="${i + 1 <= stufe ? "voll" : ""}" title="${name}"></i>`).join("");
   const knoepfe = !mitKnoepfen ? "" : ({
-    du: `<button type="button" data-act="weiter">Weiter</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
+    du: (a.optionen && a.optionen.length)
+      ? a.optionen.map(o => `<button type="button" class="${o === a.empfehlung ? "" : "ghost"}" data-act="antwort" data-wert="${esc(o)}">${o === a.empfehlung ? "⭐ " : ""}${esc(o)}</button>`).join("") + `<button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`
+      : `<button type="button" data-act="weiter">Weiter</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
     arbeitet: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
     nico: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
     neu: `<button type="button" data-act="start">Starten</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
@@ -1642,7 +1657,9 @@ function auftragKarte(a, mitKnoepfen){
       <div class="ak-kopf"><b>${esc(a.thema)}</b><span class="ak-etikett st-${z}">${ZUSTAND_TEXT[z]}</span></div>
       <div class="ak-balken">${balken}</div>
       <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
-      ${a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : ""}
+      ${z === "du" && a.frage
+        ? `<div class="ak-frage">${esc(a.frage)}</div>${a.empfehlung ? `<div class="ak-empfehlung">⭐ Empfehlung: ${esc(a.empfehlung)}</div>` : ""}`
+        : (a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : "")}
       ${knoepfe ? `<div class="agent-knoepfe">${knoepfe}</div>` : ""}
     </div>`;
 }
