@@ -434,9 +434,10 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   .teambar{padding-bottom:0;margin-bottom:0}
   .stage canvas{position:absolute;inset:0}
   .buehne .teambar{align-self:end;padding-bottom:4px}
-  .phasecol{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin}
-  .phasecol .next{flex:1;display:flex;flex-direction:column;gap:12px}
-  .phasecol .next .acard{flex:1 1 auto;padding:14px 16px;gap:6px;border-radius:16px}
+  .phasecol{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:none}
+  .phasecol::-webkit-scrollbar{display:none}
+  .phasecol .next{flex:1;display:flex;flex-direction:column;gap:8px}
+  .phasecol .next .acard{flex:1 1 auto;padding:10px 14px;gap:4px;border-radius:14px}
 }
 </style>
 </head>
