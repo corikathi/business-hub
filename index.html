@@ -892,7 +892,7 @@ async function loadAll(){
 
 // ---------- Agenten steuern: Knöpfe schreiben Befehle, der Agent holt sie ab ----------
 // Der Hub setzt nie selbst „arbeitet“. Das passiert erst, wenn der Agent den Befehl ausführt.
-const RICHTUNGEN = ["Besser schlafen", "Pilates und Yoga", "Hundealltag", "Bad und Haare", "Küche mit Design"];
+const RICHTUNGEN = ["Alle Richtungen vergleichen", "Besser schlafen", "Pilates und Yoga", "Hundealltag", "Bad und Haare", "Küche mit Design"];
 const AGENT_STATUS = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 
 function renderRichtungen(){
@@ -1822,7 +1822,7 @@ $("nicoHinweis") && $("nicoHinweis").addEventListener("click", e => {
 });
 // Der Hinweis sitzt unten links in der Bühne, über dem Büro, nicht mehr oben
 $("labels") && $("nicoHinweis") && $("labels").appendChild($("nicoHinweis"));
-const STUFEN_NAMEN = ["Ideen", "Marktcheck", "Kalkulation", "Tiefencheck"];
+const STUFEN_NAMEN = ["Ideen-Scan", "Deine Auswahl", "Helium-Check", "Tiefencheck"];
 function zeitVorher(iso){
   if (!iso) return "noch nie";
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
