@@ -815,6 +815,8 @@ async function loadAgenten(){
       <span class="agent-knoepfe">
         <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
         <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
+        <button type="button" class="ghost" data-act="weiter" ${a.status === "fertig" ? "disabled" : ""}>Weiter prüfen</button>
+        <button type="button" class="ghost" data-act="verwerfen" ${a.status === "fertig" ? "disabled" : ""}>Verwerfen</button>
         <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
       </span>
     </div>`).join("") || `<div class="empty">Noch keine Aufträge. Wähl oben eine Markenrichtung.</div>`;
@@ -848,6 +850,15 @@ async function agentAktion(e){
     const { error } = await sb.from("recherche_auftraege")
       .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: "Von Corinna abgeschlossen" }).eq("id", id);
     if (error) return showErr("Auftrag konnte nicht abgeschlossen werden: " + error.message);
+  } else if (act === "verwerfen") {
+    const { error } = await sb.from("recherche_auftraege")
+      .update({ status: "fertig", erledigt_am: new Date().toISOString(), fortschritt: "Verworfen von Corinna" }).eq("id", id);
+    if (error) return showErr("Auftrag konnte nicht verworfen werden: " + error.message);
+  } else if (act === "weiter") {
+    const { error } = await sb.from("recherche_auftraege")
+      .update({ status: "offen", fortschritt: "Weiter prüfen, wartet auf den Agenten" }).eq("id", id);
+    if (error) return showErr("Auftrag konnte nicht geändert werden: " + error.message);
+    if (!(await befehlSenden("scout", "start", thema, id))) return;
   } else {
     const text = act === "start" ? "Start angefordert, wartet auf den Agenten" : "Stopp angefordert, wartet auf den Agenten";
     const { error } = await sb.from("recherche_auftraege").update({ status: "offen", fortschritt: text }).eq("id", id);
@@ -1475,6 +1486,8 @@ async function loadAuftraege(){
       <span class="agent-knoepfe">
         <button type="button" class="ghost" data-act="start" ${a.status === "fertig" ? "disabled" : ""}>Starten</button>
         <button type="button" class="ghost" data-act="stopp" ${a.status === "fertig" ? "disabled" : ""}>Stoppen</button>
+        <button type="button" class="ghost" data-act="weiter" ${a.status === "fertig" ? "disabled" : ""}>Weiter prüfen</button>
+        <button type="button" class="ghost" data-act="verwerfen" ${a.status === "fertig" ? "disabled" : ""}>Verwerfen</button>
         <button type="button" class="ghost" data-act="fertig" ${a.status === "fertig" ? "disabled" : ""}>Fertig</button>
       </span>
     </div>`).join("");
