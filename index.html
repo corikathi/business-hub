@@ -131,20 +131,20 @@ button.nchip.late{border-color:var(--red)}
 .tinfo small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Auftrag als Karte: Name, Etikett, Balken mit 4 Stufen, ein Satz, passende Knöpfe */
 .auftrag-karte{display:grid;gap:7px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--bg);margin-bottom:8px}
-.auftrag-karte.du{border-color:var(--warn)}
-.auftrag-karte.arbeitet{border-color:var(--accent)}
-.auftrag-karte.fertig,.auftrag-karte.verworfen{opacity:.75}
+.auftrag-karte.st-du{border-color:var(--warn)}
+.auftrag-karte.st-arbeitet{border-color:var(--accent)}
+.auftrag-karte.st-fertig,.auftrag-karte.st-verworfen{opacity:.75}
 .ak-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .ak-kopf b{font-size:15px}
 .ak-etikett{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
-.ak-etikett.du{color:#0f1216;background:var(--warn);border-color:var(--warn)}
-.ak-etikett.arbeitet{color:var(--accent);border-color:var(--accent)}
-.ak-etikett.fertig{color:var(--ok);border-color:var(--ok)}
+.ak-etikett.st-du{color:#0f1216;background:var(--warn);border-color:var(--warn)}
+.ak-etikett.st-arbeitet{color:var(--accent);border-color:var(--accent)}
+.ak-etikett.st-fertig{color:var(--ok);border-color:var(--ok)}
 .ak-balken{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .ak-balken i{height:7px;border-radius:999px;background:var(--line)}
 .ak-balken i.voll{background:var(--accent)}
-.auftrag-karte.du .ak-balken i.voll{background:var(--warn)}
-.auftrag-karte.fertig .ak-balken i.voll{background:var(--ok)}
+.auftrag-karte.st-du .ak-balken i.voll{background:var(--warn)}
+.auftrag-karte.st-fertig .ak-balken i.voll{background:var(--ok)}
 .ak-stufe{font-size:11px;color:var(--muted)}
 .ak-text{font-size:13px}
 .ak-text b{color:var(--warn)}
@@ -1619,8 +1619,8 @@ function auftragKarte(a, mitKnoepfen){
     verworfen: "",
   })[z];
   return `
-    <div class="auftrag-karte ${z}" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
-      <div class="ak-kopf"><b>${esc(a.thema)}</b><span class="ak-etikett ${z}">${ZUSTAND_TEXT[z]}</span></div>
+    <div class="auftrag-karte st-${z}" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
+      <div class="ak-kopf"><b>${esc(a.thema)}</b><span class="ak-etikett st-${z}">${ZUSTAND_TEXT[z]}</span></div>
       <div class="ak-balken">${balken}</div>
       <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
       ${a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : ""}
