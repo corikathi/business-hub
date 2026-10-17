@@ -412,7 +412,8 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   nav.menu button.tab.profil{margin-top:auto}
   .buehne{height:calc(100vh - 36px);min-height:0;grid-template-rows:auto minmax(0,1fr) auto;align-items:stretch;overflow:hidden}
   .buehne .greet{align-self:start}
-  .buehne .stage{height:auto;min-height:440px}
+  .buehne .stage{height:auto;min-height:300px}
+  .teambar{padding-bottom:0;margin-bottom:0}
   .stage canvas{position:absolute;inset:0}
   .buehne .teambar{align-self:end;padding-bottom:4px}
   .phasecol{align-self:stretch;display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin}
@@ -772,7 +773,7 @@ function renderGreeting(){
   $("greetDate").textContent = now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" }) + " · " + now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
   const tag = h >= 6 && h < 19;
   $("halloIco").innerHTML = pixIcon(tag ? "sonne" : "mond");
-  $("halloIco").className = "hico " + (tag ? "tag" : "nacht");
+  $("halloIco").className = "hico " + (tag ? "am-tag" : "nacht");
   $("halloIco").title = part;
   $("greetQuote").textContent = QUOTES[dayOfYear % QUOTES.length];
 }
