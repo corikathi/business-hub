@@ -993,6 +993,20 @@ async function agentAktion(e){
 }
 $("agentenList").addEventListener("click", agentAktion);
 $("auftraege").addEventListener("click", agentAktion);
+// Checkliste speichern, sobald du abhakst oder einen Wert eintippst
+$("auftraege").addEventListener("change", async e => {
+  const karte = e.target.closest(".auftrag-karte");
+  if (!karte || (e.target.dataset.cl === undefined && e.target.dataset.clwert === undefined)) return;
+  const a = letzteAuftraege.find(x => String(x.id) === karte.dataset.id);
+  if (!a || !Array.isArray(a.checkliste)) return;
+  const liste = a.checkliste.map(p => ({ ...p }));
+  if (e.target.dataset.cl !== undefined) liste[+e.target.dataset.cl].erledigt = e.target.checked;
+  if (e.target.dataset.clwert !== undefined) liste[+e.target.dataset.clwert].wert = e.target.value;
+  const { error } = await sb.from("recherche_auftraege").update({ checkliste: liste }).eq("id", a.id);
+  if (error) return showErr("Checkliste konnte nicht gespeichert werden: " + error.message);
+  a.checkliste = liste;
+  loadAuftraege();
+});
 
 async function loadTeam(){
   const { data, error } = await sb.from("mitarbeiter").select("*");
@@ -1648,6 +1662,23 @@ function zustandRang(a){ return {du: 0, arbeitet: 1, nico: 2, neu: 3}[auftragZus
 const ZUSTAND_TEXT = {arbeitet: "Arbeitet", du: "Du bist dran", nico: "Wartet auf Nico", neu: "Nicht gestartet", fertig: "Fertig", verworfen: "Verworfen"};
 
 // Nicos Frage gegliedert: was passiert ist, Ergebnis als Punkte, Empfehlung mit Grund, Frage
+// Ist die Checkliste vollständig? Ohne Checkliste gilt sie als fertig.
+function checklisteFertig(a){
+  const liste = Array.isArray(a.checkliste) ? a.checkliste : [];
+  return !liste.length || liste.every(p => p.erledigt && String(p.wert || "").trim() !== "");
+}
+// Checkliste: Kästchen zum Abhaken, Feld für den Wert, erst dann wird „Werte liegen bereit“ frei
+function checklisteHtml(a){
+  const liste = Array.isArray(a.checkliste) ? a.checkliste : [];
+  if (!liste.length) return "";
+  const fertig = liste.every(p => p.erledigt && String(p.wert || "").trim() !== "");
+  return `<div class="ak-checkliste">
+    <b>Deine Prüfliste</b>
+    ${liste.map((p, i) => `<label class="ak-punkt"><input type="checkbox" data-cl="${i}" ${p.erledigt ? "checked" : ""}> <span>${esc(p.text)}</span>
+      <input class="ak-wert" data-clwert="${i}" value="${esc(p.wert || "")}" placeholder="Wert eintragen"></label>`).join("")}
+    <small>${fertig ? "Alles eingetragen. Du kannst jetzt „Werte liegen bereit“ tippen." : "Erst alle Punkte abhaken und Werte eintragen."}</small>
+  </div>`;
+}
 function frageHtml(frage, empfehlung){
   const zeilen = String(frage || "").split("\n").map(z => z.trim()).filter(Boolean);
   const punkte = zeilen.filter(z => /^[-•]\s/.test(z)).map(z => `<li>${esc(z.replace(/^[-•]\s*/, ""))}</li>`).join("");
@@ -1665,7 +1696,7 @@ function auftragKarte(a, mitKnoepfen){
   const balken = STUFEN_NAMEN.map((name, i) => `<i class="${i + 1 <= stufe ? "voll" : ""}" title="${name}"></i>`).join("");
   const knoepfe = !mitKnoepfen ? "" : ({
     du: (a.optionen && a.optionen.length)
-      ? a.optionen.map(o => `<button type="button" class="${o === a.empfehlung ? "" : "ghost"}" data-act="antwort" data-wert="${esc(o)}">${o === a.empfehlung ? "⭐ " : ""}${esc(o)}</button>`).join("") + `<button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`
+      ? a.optionen.map(o => `<button type="button" class="${o === a.empfehlung ? "" : "ghost"}" data-act="antwort" data-wert="${esc(o)}" ${o === "Werte liegen bereit" && !checklisteFertig(a) ? "disabled" : ""}>${o === a.empfehlung ? "⭐ " : ""}${esc(o)}</button>`).join("") + `<button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`
       : `<button type="button" data-act="weiter">Weiter</button><button type="button" class="ghost" data-act="verwerfen">Verwerfen</button>`,
     arbeitet: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
     nico: `<button type="button" class="ghost" data-act="stopp">Stoppen</button>`,
@@ -1679,7 +1710,7 @@ function auftragKarte(a, mitKnoepfen){
       <div class="ak-balken">${balken}</div>
       <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
       ${z === "du" && a.frage
-        ? frageHtml(a.frage, a.empfehlung)
+        ? frageHtml(a.frage, a.empfehlung) + checklisteHtml(a)
         : (a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : "")}
       ${knoepfe ? `<div class="agent-knoepfe">${knoepfe}</div>` : ""}
     </div>`;
