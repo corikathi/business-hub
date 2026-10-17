@@ -141,6 +141,7 @@ button.nchip.late{border-color:var(--red)}
 .aufklapp[open] summary::before{content:"▾ ";}
 .nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
 .nico-gross svg{width:72px;height:auto;display:block}
+.nico-bild{width:150px;height:150px;border-radius:12px;object-fit:cover;display:block;border:1px solid var(--line)}
 .nico-infos{display:grid;gap:3px;min-width:0}
 .nico-infos b{font-size:18px;font-weight:800}
 .nico-infos .muted{font-size:12px}
@@ -1696,6 +1697,14 @@ let teamInfo = {laufend: false, bereit: false, ideen: 0};
 // Nico-Karte: große Figur, Name, was er gerade tut und seine letzten Aufträge
 let nicoZeile = null;
 let letzteAuftraege = [];
+// Kamera-Zoom auf Nico
+const homeT = {x: 1.5, z: 0};
+let nicoZoom = false, nicoBild = null, nicoSnapWanted = false;
+function nicoFokus(on){
+  nicoZoom = on;
+  if (on) setTimeout(() => { nicoSnapWanted = true; }, 1200);
+  else nicoBild = null;
+}
 const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 function renderNicoKarte(){
   const el = $("nicoKarte");
@@ -1704,10 +1713,11 @@ function renderNicoKarte(){
   const fig = pixFigure({...ASSIST_COLORS, H: z.hair, S: z.skin, T: z.top, A: z.top, P: z.pants});
   const status = nicoZeile ? nicoZeile.cls : "frei";
   const was = nicoZeile ? nicoZeile.text : "Gerade nichts offen";
+  const bild = nicoBild ? `<img class="nico-bild" alt="Nico im Büro" src="${nicoBild}">` : "";
   const liste = letzteAuftraege.slice(0, 5).map(a => `<div class="auftrag"><span class="astatus ${esc(a.status)}">${AUFTRAG_TEXT[a.status] || esc(a.status)}</span><span class="athema">${esc(a.thema)}${a.fortschritt ? `<small class="afort">${esc(a.fortschritt)}</small>` : ""}</span></div>`).join("");
   el.innerHTML = `
     <div class="nico-karte">
-      <div class="nico-gross">${fig}</div>
+      <div class="nico-gross">${bild || fig}</div>
       <div class="nico-infos">
         <b>Nico (Scout)</b>
         <span class="muted">Produktrecherche</span>
@@ -1718,7 +1728,7 @@ function renderNicoKarte(){
     ${liste || `<div class="empty">Noch keine Aufträge.</div>`}`;
 }
 // Klick auf Nico öffnet diese Karte
-function openNico(){ renderNicoKarte(); openPanel("nico"); }
+function openNico(){ nicoFokus(true); renderNicoKarte(); openPanel("nico"); }
 
 // Nächste Abholung von Nico: alle 15 Minuten, dazu ein kleiner Puffer (der Lauf startet ein paar Minuten später)
 function naechstePruefung(){
@@ -1780,6 +1790,7 @@ function buildScene(){
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
   cam.position.set(30, 26, 30);
   cam.lookAt(1.5, 0, 0);
+  const camT = {x: homeT.x, z: homeT.z};   // Punkt, auf den die Kamera schaut
   scene.add(new THREE.HemisphereLight(0xdfe8f5, 0x1a1e26, 0.75));
   const sun = new THREE.DirectionalLight(0xffffff, 0.55);
   sun.position.set(-12, 24, 10);
@@ -2244,6 +2255,7 @@ function buildScene(){
     // Am Handy zielt die Kamera etwas weiter nach hinten, damit das Büro mittig in der flachen Bühne sitzt
     const handy = w < 600;
     const tx = handy ? -0.8 : 1.5, tz = handy ? -2.3 : 0;
+    homeT.x = tx; homeT.z = tz;
     cam.position.set(tx + 28.5, 26, tz + 30);
     cam.lookAt(tx, 0, tz);
     const s = handy ? Math.max(19.5, 30.4 / a) : Math.max(18, 31 / a);
@@ -2297,7 +2309,29 @@ function buildScene(){
       if (v.index === 0) v.armR.rotation.z = (scoutWaving && !moving) ? -2.2 + Math.sin(t / 180) * 0.25 : 0;
     });
 
+    // Kamera: fährt bei einem Klick auf Nico auf ihn zu und folgt ihm, zurück zum Büro beim Schließen
+    const ziel = nicoZoom && walkers[0] ? {x: walkers[0].g.position.x, z: walkers[0].g.position.z} : homeT;
+    camT.x += (ziel.x - camT.x) * 0.08;
+    camT.z += (ziel.z - camT.z) * 0.08;
+    cam.position.set(camT.x + 28.5, 26, camT.z + 30);
+    cam.lookAt(camT.x, 0, camT.z);
+    cam.zoom += ((nicoZoom ? 2.6 : 1) - cam.zoom) * 0.08;
+    cam.updateProjectionMatrix();
+
     if (w && h) renderer.render(scene, cam);
+    // Bildausschnitt von Nico, einmal nach dem Heranzoomen
+    if (nicoSnapWanted && walkers[0]) {
+      nicoSnapWanted = false;
+      const v = new THREE.Vector3(walkers[0].g.position.x, 1.1, walkers[0].g.position.z).project(cam);
+      const ratio = renderer.getPixelRatio();
+      const px = (v.x + 1) / 2 * w * ratio, py = (1 - v.y) / 2 * h * ratio;
+      const r = 150 * ratio;
+      const c = document.createElement("canvas");
+      c.width = 300; c.height = 300;
+      c.getContext("2d").drawImage(renderer.domElement, px - r, py - r, 2 * r, 2 * r, 0, 0, 300, 300);
+      nicoBild = c.toDataURL("image/png");
+      renderNicoKarte();
+    }
     const project = (pos, el) => {
       const v = pos.clone().project(cam);
       const x = (v.x + 1) / 2 * w, y = (1 - v.y) / 2 * h;
@@ -2328,6 +2362,7 @@ function openPanel(key){
 }
 document.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.open)));
 function closeDrawer(){
+  nicoFokus(false);
   $("drawer").classList.remove("open"); $("veil").classList.remove("on");
   document.querySelectorAll("[data-open]").forEach(b => b.classList.remove("on"));
 }
