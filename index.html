@@ -190,6 +190,15 @@ button.nchip.late{border-color:var(--red)}
 @media (prefers-reduced-motion:reduce){ .stufe.aktiv span{animation:none} }
 .nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
 .nico-gross svg{width:72px;height:auto;display:block}
+.idee-zeile{display:grid;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);margin-bottom:8px}
+.idee-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.idee-kopf b{font-size:14px}
+.idee-status{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.idee-zeile.bewertet .idee-status{color:var(--ok);border-color:var(--ok)}
+.idee-zeile.wird-geprüft .idee-status{color:var(--accent);border-color:var(--accent)}
+.idee-zeile.raus{opacity:.6}
+.idee-text{font-size:13px}
+.idee-grund{color:var(--muted);font-size:12px}
 .nico-hinweis{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(245,194,107,.08);border:1px solid var(--warn);border-radius:14px;padding:12px 16px}
 .nico-hinweis[hidden]{display:none}
 #labels > .nico-hinweis{position:absolute;left:12px;bottom:12px;max-width:360px;pointer-events:auto;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4);background:var(--panel)}
@@ -665,6 +674,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
         <div class="nico-layout">
           <div class="nico-links">
             <div id="nicoKarte"></div>
+            <div id="ideenBereich"></div>
             <h3 class="phase">Neue Recherche</h3>
             <div class="vlist" id="richtungen"></div>
             <form class="grid2" id="rechercheForm">
@@ -894,7 +904,7 @@ let entscheidungen = [];
 let filter = "offen";
 
 async function loadAll(){
-  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget(), loadAgenten(), loadNicoStand()]);
+  await Promise.all([loadTeam(), loadQuests(), loadProducts(), loadWissen(), loadEntscheidungen(), loadAuftraege(), loadBudget(), loadAgenten(), loadNicoStand(), loadIdeen()]);
 }
 
 // ---------- Agenten steuern: Knöpfe schreiben Befehle, der Agent holt sie ab ----------
@@ -1883,6 +1893,21 @@ function nicoFokus(on){
 const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 // Nicos Stand aus der Datenbank (wird von Nico per Befehl geschrieben)
 let nicoStand = null;
+// Ideen-Speicher: deine Ideen und Nicos Ergebnis dazu
+const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "Bewertet", raus: "Raus"};
+async function loadIdeen(){
+  const { data, error } = await sb.from("ideen").select("*").order("created_at", { ascending: false }).limit(30);
+  const el = $("ideenBereich");
+  if (!el) return;
+  if (error) { el.innerHTML = ""; return; }
+  if (!data || !data.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<h3 class="phase">Deine Ideen (${data.length})</h3>` + data.map(i => `
+    <div class="idee-zeile st-${esc(i.status.replace(/ /g, "-"))}">
+      <div class="idee-kopf"><b>${esc(i.text)}</b><span class="idee-status">${IDEEN_STATUS[i.status] || esc(i.status)}</span></div>
+      ${i.ergebnis ? `<div class="idee-text">${esc(i.ergebnis)}</div>` : ""}
+      ${i.grund ? `<small class="idee-grund">${esc(i.grund)}</small>` : ""}
+    </div>`).join("");
+}
 async function loadNicoStand(){
   const { data, error } = await sb.from("agent_stand").select("*").eq("id", "scout").maybeSingle();
   if (error) return;
