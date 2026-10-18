@@ -1896,7 +1896,8 @@ let nicoStand = null;
 // Ideen-Speicher: deine Ideen und Nicos Ergebnis dazu
 const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "Bewertet", raus: "Raus"};
 async function loadIdeen(){
-  const { data, error } = await sb.from("ideen").select("*").order("created_at", { ascending: false }).limit(30);
+  // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
+  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(30);
   const el = $("ideenBereich");
   if (!el) return;
   if (error) { el.innerHTML = ""; return; }
