@@ -2211,7 +2211,9 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   const anteil = gesamt ? Math.round(topUmsatz / gesamt * 100) : 0;
   const p2 = anteil > 50 ? "rot" : anteil > 30 ? "gelb" : "grün";
   const medBew = median(produkte.map(p => p.bewertungen));
-  const p3 = medBew <= 500 ? "grün" : medBew <= 1500 ? "gelb" : "rot";
+  // Bewertungen: Verkaufen Anbieter mit wenigen Bewertungen (unter 200) trotzdem mindestens 10.000 € im Monat?
+  const wenigBew = produkte.filter(p => p.bewertungen != null && p.bewertungen < 200 && p.umsatz >= 10000).sort((a, b) => b.umsatz - a.umsatz);
+  const p3 = wenigBew.length >= 2 ? "grün" : wenigBew.length === 1 ? "gelb" : "rot";
   const medPreis = median(produkte.map(p => p.preis));
   // Preis: Zahlen Kunden hier 50 € oder mehr? Gezählt werden Anbieter ab 50 € mit mindestens 10.000 € im Monat
   const ab50 = produkte.filter(p => p.preis >= 50 && p.umsatz >= 10000);
@@ -2235,7 +2237,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
     p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
-    `Bewertungen ${p3}: Median ${Math.round(medBew)}`,
+    `Bewertungen ${p3}: ${wenigBew.length} Anbieter mit unter 200 Bewertungen machen mindestens 10.000 €/Monat${wenigBew.length ? ` (${wenigBew.slice(0, 4).map(p => `${p.marke} ${p.bewertungen} Bew. ${euro(p.umsatz)}`).join(", ")})` : ""}, Mittel der Nische ${Math.round(medBew)} Bewertungen`,
     `Preis ${p4}: ${ab50.length} Anbieter verkaufen ab 50 € mit mindestens 10.000 €/Monat${ab50.length ? ` (${ab50.slice(0, 4).map(p => p.marke + " " + p.preis.toFixed(2).replace(".", ",") + " €").join(", ")})` : ""}, Mittel der Nische ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
     `Neue Anbieter ${p5}: ${neue.length} unter 18 Monaten mit über 10.000 €/Monat`,
     `Schwächen ${p6}: ${mitSchwaeche.length} von ${starke.length} starken Anbietern mit Schwäche` +
@@ -2256,7 +2258,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     p1 !== "grün" && (nStark > 10 ? "es sind schon sehr viele starke Anbieter da" : "nur wenige Anbieter verdienen richtig gut"),
     p7 && p7 !== "grün" && "es wird eher wenig gesucht",
     p2 !== "grün" && `${topMarke} ist sehr stark (${anteil} % vom Umsatz)`,
-    p3 !== "grün" && "die Großen haben schon viele Bewertungen",
+    p3 !== "grün" && "neue Anbieter ohne viele Bewertungen verkaufen kaum",
     p4 !== "grün" && "kaum jemand verkauft hier gut ab 50 €",
     p5 !== "grün" && "neue Anbieter tun sich schwer",
     p6 !== "grün" && "die Konkurrenz hat kaum sichtbare Schwächen",
