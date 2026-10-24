@@ -2208,7 +2208,8 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   const wenigBilder = starke.filter(p => p.bilder != null && p.bilder < 7);
   const mitSchwaeche = starke.filter(p => (p.sterne != null && p.sterne <= 4.2) || (p.bilder != null && p.bilder < 7));
   const p6 = mitSchwaeche.length >= 2 ? "grün" : mitSchwaeche.length === 1 ? "gelb" : "rot";
-  const p7 = topSV ? (topSV >= 10000 ? "grün" : topSV >= 5000 ? "gelb" : "rot") : null;
+  // Suchvolumen nach eCommerce.de: ab 5.000 grün, 1.000 bis 5.000 typisch für genaue Nischen, darunter zu wenig
+  const p7 = topSV ? (topSV >= 5000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
   const punkte = [p1, p2, p3, p4, p5, p6, p7].filter(Boolean);
   // Rot, sobald Nachfrage/Blue Ocean, Marke oder Preis rot ist; grün, wenn nichts rot und höchstens ein Punkt gelb ist
   const ampel = p1 === "rot" || p2 === "rot" || p4 === "rot" ? "rot"
@@ -2216,7 +2217,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   const komma = n => String(n).replace(".", ",");
   const texte = [
     `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
-    p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 10.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
+    p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
     `Bewertungen ${p3}: Median ${Math.round(medBew)}`,
     `Preis ${p4}: ${ab50.length} Anbieter verkaufen ab 50 € mit mindestens 10.000 €/Monat${ab50.length ? ` (${ab50.slice(0, 4).map(p => p.marke + " " + p.preis.toFixed(2).replace(".", ",") + " €").join(", ")})` : ""}, Mittel der Nische ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
