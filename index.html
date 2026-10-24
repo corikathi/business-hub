@@ -2136,21 +2136,40 @@ function ddCsv(text){
   }
   return zeilen;
 }
-function nischeAuswerten(compText, kwText){
+function nischeAuswerten(compText, kwText, listText, dateiname){
   const zahl = s => { const n = parseFloat(String(s || "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
   const monate = s => { const j = /(\d+)\s*yr/.exec(s || ""), m = /(\d+)\s*mo/.exec(s || ""); return (j ? +j[1] * 12 : 0) + (m ? +m[1] : 0); };
   const median = a => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
   const euro = n => Math.round(n).toLocaleString("de-DE") + " €";
-  const zeilen = ddCsv(compText);
-  // Spalten der Produkte: dort, wo in der Kopfzeile eine ASIN steht (CSV und Excel haben verschiedene Abstände)
-  const kopf = zeilen.find(z => z.some(c => c.trim() === "Competitors")) || zeilen[0] || [];
-  const spalten = kopf.map((c, i) => /^B0[A-Z0-9]{8}$/.test(c.trim()) ? i : -1).filter(i => i >= 0);
-  const zeile = name => { const z = zeilen.find(r => r.slice(0, 3).some(c => c.trim() === name)) || []; return spalten.map(i => z[i]); };
-  const produkte = zeile("ASIN").map((asin, i) => ({
-    asin, marke: zeile("Brand")[i], sterne: zahl(zeile("Rating")[i]), bewertungen: zahl(zeile("Review Count")[i]),
-    alter: monate(zeile("Listing Age")[i]), preis: zahl(zeile("Price")[i]), umsatz: zahl(zeile("30d Revenue")[i]) || 0,
-  }));
-  if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es der Competitors-Export?");
+  let produkte = [];
+  if (compText) {
+    // Competitors-Tabelle: Produkte als Spalten. Spalten dort, wo in der Kopfzeile eine ASIN steht (CSV und Excel haben verschiedene Abstände)
+    const zeilen = ddCsv(compText);
+    const kopf = zeilen.find(z => z.some(c => c.trim() === "Competitors")) || zeilen[0] || [];
+    const spalten = kopf.map((c, i) => /^B0[A-Z0-9]{8}$/.test(c.trim()) ? i : -1).filter(i => i >= 0);
+    const zeile = name => { const z = zeilen.find(r => r.slice(0, 3).some(c => c.trim() === name)) || []; return spalten.map(i => z[i]); };
+    produkte = zeile("ASIN").map((asin, i) => ({
+      asin, marke: zeile("Brand")[i], sterne: zahl(zeile("Rating")[i]), bewertungen: zahl(zeile("Review Count")[i]),
+      alter: monate(zeile("Listing Age")[i]), preis: zahl(zeile("Price")[i]), umsatz: zahl(zeile("30d Revenue")[i]) || 0,
+    }));
+  } else if (listText) {
+    // Produktliste (Export aus der Suche): ein Produkt pro Zeile, mit Gebühren und Größe
+    const lz = ddCsv(listText), k = lz.findIndex(r => r.some(c => c.trim() === "ASINs"));
+    const kopf = lz[k] || [];
+    const sp = n => kopf.findIndex(c => c.trim().startsWith(n));
+    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier");
+    const seit = s => {
+      const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "").trim());
+      if (!d) return zahl(s) ?? monate(s);
+      const jetzt = new Date();
+      return (jetzt.getFullYear() - +d[1]) * 12 + (jetzt.getMonth() + 1 - +d[2]);
+    };
+    produkte = lz.slice(k + 1).filter(z => /^B0[A-Z0-9]{8}$/.test((z[iA] || "").trim())).map(z => ({
+      asin: z[iA].trim(), marke: z[iB], preis: zahl(z[iP]), umsatz: zahl(z[iR]) || 0, sterne: zahl(z[iS]),
+      bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "",
+    }));
+  }
+  if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es ein Data-Dive-Export mit Konkurrenten?");
   let name = "", topSV = 0;
   if (kwText) {
     const kz = ddCsv(kwText), k = kz.findIndex(r => r.includes("Search Terms"));
@@ -2159,6 +2178,8 @@ function nischeAuswerten(compText, kwText){
       for (const z of kz.slice(k + 1)) { const sv = zahl(z[s]); if (sv > topSV) { topSV = sv; name = z[t]; } }
     }
   }
+  // Ohne Keyword-Datei: Name aus dem Dateinamen (die Produktliste heißt wie der Suchbegriff)
+  if (!name && dateiname && !/^niche-/i.test(dateiname)) name = dateiname.replace(/\.(csv|xlsx?|zip)$/i, "").replace(/\s*\(\d+\)$/, "").trim();
   name = name ? name.charAt(0).toUpperCase() + name.slice(1) : "Neue Nische";
   const starkeMarken = [...new Set(produkte.filter(p => p.umsatz >= 15000).map(p => p.marke))];
   const p1 = starkeMarken.length >= 5 ? "grün" : starkeMarken.length >= 3 ? "gelb" : "rot";
@@ -2180,12 +2201,19 @@ function nischeAuswerten(compText, kwText){
   const texte = [
     `Nachfrage ${p1}: ${starkeMarken.length} Marken über 15.000 €/Monat (Ziel 5)`,
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
-    `Bewertungen ${p3}: Median ${medBew}`,
+    `Bewertungen ${p3}: Median ${Math.round(medBew)}`,
     `Preis ${p4}: Median ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
     `Neue Anbieter ${p5}: ${neue.length} unter 18 Monaten mit über 10.000 €/Monat`,
     schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + String(p.sterne).replace(".", ",")).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
     "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${String(p.sterne).replace(".", ",")} Sterne)`).join("; "),
   ];
+  // Die Produktliste kennt die Amazon-Gebühr pro Stück, das hilft bei der Rechnung
+  const medGebuehr = median(produkte.map(p => p.gebuehr ?? null));
+  if (medGebuehr != null) {
+    const groessen = produkte.map(p => p.groesse).filter(Boolean);
+    const haeufig = groessen.sort((a, b) => groessen.filter(x => x === b).length - groessen.filter(x => x === a).length)[0];
+    texte.splice(texte.length - 1, 0, `Amazon-Gebühr: im Mittel ${medGebuehr.toFixed(2).replace(".", ",")} € pro Stück${haeufig ? `, meist Größe „${haeufig}“` : ""}`);
+  }
   // In Worten: lohnt es sich, was ist möglich, was ist der nächste Schritt
   const gruende = [
     p1 !== "grün" && "nur wenige Anbieter verdienen richtig gut",
@@ -2197,20 +2225,21 @@ function nischeAuswerten(compText, kwText){
   const fazit = ampel === "grün" ? "Ja, lohnt sich anzuschauen: genug Nachfrage und kein übermächtiger Platzhirsch."
     : ampel === "gelb" ? `Vielleicht. Der Markt ist da (${euro(gesamt)} im Monat), aber ${gruende.join(" und ")}. Lohnt sich nur, wenn du etwas spürbar besser machst.`
     : `Eher nicht: ${p2 === "rot" ? `${topMarke} beherrscht die Nische` : "zu wenig Nachfrage"}.`;
-  // Möglicher Umsatz: was die Anbieter auf Platz 5 bis 10 schaffen, ist für eine neue Marke realistisch
+  // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
+  // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
   const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
-  const mittelfeld = (sortiert.length >= 10 ? sortiert.slice(4, 10) : sortiert.slice(Math.floor(sortiert.length / 2))).map(p => p.umsatz).filter(u => u > 0);
+  const mittelfeld = sortiert.slice(Math.floor(sortiert.length / 3), Math.ceil(sortiert.length * 2 / 3)).map(p => p.umsatz).filter(u => u > 0);
   const von = Math.min(...mittelfeld), bis = Math.max(...mittelfeld);
   const rund = n => Math.round(n / 100) * 100;
   const stueck = medPreis ? [Math.round(von / medPreis), Math.round(bis / medPreis)] : null;
   const maxEk = stueck ? (2000 / (stueck[0] * 2)).toFixed(2).replace(".", ",") : null;
   const moeglich = mittelfeld.length
-    ? `Möglich: Nach 6 bis 12 Monaten sind etwa ${euro(rund(von))} bis ${euro(rund(bis))} Umsatz im Monat realistisch (so viel schaffen die Anbieter auf Platz 5 bis 10)` +
+    ? `Möglich: Nach 6 bis 12 Monaten sind etwa ${euro(rund(von))} bis ${euro(rund(bis))} Umsatz im Monat realistisch (so viel schafft das Mittelfeld der Anbieter)` +
       (stueck ? `, das sind rund ${stueck[0]} bis ${stueck[1]} Stück im Monat. Bei 20 bis 25 % Marge bleiben etwa ${euro(rund(von * 0.2))} bis ${euro(rund(bis * 0.25))} Gewinn im Monat. Für 2 Monate Ware bräuchtest du rund ${stueck[0] * 2} Stück, mit 2.000 € Budget dürfte ein Stück dann höchstens ${maxEk} € kosten (mit Versand). Sonst kleiner starten und nachbestellen` : "")
     : "";
   const schwachText = schwach.length ? schwach.slice(0, 2).map(p => `${p.marke} (${String(p.sterne).replace(".", ",")} Sterne)`).join(" und ") : "";
   const naechster = ampel === "rot" ? "Nächster Schritt: Nicht weiter verfolgen, nimm die nächste Idee."
-    : `Nächster Schritt: Öffne unten bei den Konkurrenten ${schwachText ? schwachText : "die Top 3"} und lies die 1- bis 3-Sterne-Bewertungen. Wiederholt sich eine Beschwerde, die du lösen kannst? Dann Hersteller-Preise anfragen, denn der Einkaufspreis entscheidet über die Marge. Wenn nicht: nächste Idee.`;
+    : `Nächster Schritt: ${listText && !compText ? "Achtung, diese Liste enthält alle Suchtreffer, auch andere Produkte. Schau zuerst in den Links, welche Konkurrenten wirklich dein Produkt verkaufen. Genauer wird es mit dem Dive (Competitors-Export). Dann öffne" : "Öffne"} unten bei den Konkurrenten ${schwachText ? schwachText : "die Top 3"} und lies die 1- bis 3-Sterne-Bewertungen. Wiederholt sich eine Beschwerde, die du lösen kannst? Dann Hersteller-Preise anfragen, denn der Einkaufspreis entscheidet über die Marge. Wenn nicht: nächste Idee.`;
   const ergebnis = `Ampel ${ampel}. ` + [moeglich, naechster, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
   const grund = (ampel === "grün" ? "Prüfenswert: " : ampel === "gelb" ? "Mit Haken: " : "Raus: ") + fazit;
   return { name, ergebnis, grund };
@@ -2221,10 +2250,11 @@ ddInput.addEventListener("change", async () => {
   ddMeldung(`Wird ausgewertet: ${dateien.map(d => d.name).join(", ")} …`, "");
   try {
     // Jede Datei als Text (CSV) lesen; Excel wird in CSV umgewandelt. Welche Tabelle es ist, erkennt der Inhalt.
-    let compText = null, kwText = null;
+    let compText = null, kwText = null, listText = null;
     const zuordnen = text => {
       if (/(^|,)"?Search Terms"?(,|$)/m.test(text)) kwText = kwText || text;
       else if (/(^|,)"?Competitors"?(,|$)/m.test(text)) compText = compText || text;
+      else if (/(^|,)"?ASINs"?(,|$)/m.test(text) && /(^|,)"?Rev, /m.test(text)) listText = listText || text;
     };
     const excel = async buf => {
       if (!window.XLSX) throw new Error("Excel-Leser konnte nicht geladen werden. Bitte Seite neu laden.");
@@ -2242,10 +2272,10 @@ ddInput.addEventListener("change", async () => {
       } else if (/\.xlsx?$/i.test(datei.name)) await excel(await datei.arrayBuffer());
       else zuordnen(await datei.text());
     }
-    if (!compText) throw new Error(kwText
-      ? "Das ist nur die Keyword-Datei. Für die Ampel brauche ich die Competitors-Datei (die Tabelle mit den Konkurrenten). Wähle beide Dateien zusammen aus oder lade die ZIP hoch."
-      : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP oder die Competitors-Datei hoch.");
-    const r = nischeAuswerten(compText, kwText);
+    if (!compText && !listText) throw new Error(kwText
+      ? "Das ist nur die Keyword-Datei. Für die Ampel brauche ich die Tabelle mit den Konkurrenten (Competitors oder die Produktliste). Wähle beide Dateien zusammen aus oder lade die ZIP hoch."
+      : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP, die Competitors-Datei oder die Produktliste hoch.");
+    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name);
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
       : await sb.from("ideen").update({ ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
