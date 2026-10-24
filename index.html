@@ -219,6 +219,10 @@ button.nchip.late{border-color:var(--red)}
 .dd-links{margin:2px 0 0;padding-left:18px;display:grid;gap:2px}
 .dd-fazit{display:grid;gap:6px;font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;background:rgba(95,212,255,.06);border-left:3px solid var(--accent)}
 .dd-fazit p{margin:0}
+.dd-kz{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}
+.dd-kz div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:grid;gap:1px}
+.dd-kz small{font-size:11px;color:var(--muted)}
+.dd-kz b{font-size:13px}
 .dd-fazit b{color:var(--accent)}
 .dd-such{color:var(--ink);user-select:all}
 .ireiter-leiste{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
@@ -2049,9 +2053,11 @@ async function loadIdeen(){
     if (ampel) {
       const rest = i.ergebnis.slice(ampel[0].length);
       const teile = rest.includes(" | ") ? rest.split(" | ") : rest.split(/\. (?=[A-ZÄÖÜ])/);
+      const kz = teile.find(t => /^Kennzahlen: /.test(t));
       const oben = teile.filter(t => /^(Möglich|Nächster Schritt): /.test(t));
-      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt): /.test(t));
-      details = (oben.length ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "")
+      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen): /.test(t));
+      const kaestchen = kz ? `<div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(v || "")}</b></div>`; }).join("")}</div>` : "";
+      details = kaestchen + (oben.length ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "")
         + `<details class="aufklapp unter"><summary>Zahlen im Detail und Konkurrenten</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
     }
     const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
@@ -2263,8 +2269,8 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     p5 !== "grün" && "neue Anbieter tun sich schwer",
     p6 !== "grün" && "die Konkurrenz hat kaum sichtbare Schwächen",
   ].filter(Boolean);
-  const fazit = ampel === "grün" ? "Ja, lohnt sich anzuschauen: genug Nachfrage und kein übermächtiger Platzhirsch."
-    : ampel === "gelb" ? `Vielleicht. Der Markt ist da (${euro(gesamt)} im Monat), aber ${gruende.join(" und ")}. Lohnt sich nur, wenn du etwas spürbar besser machst.`
+  const fazit = ampel === "grün" ? (gruende.length ? `Lohnt sich anzuschauen. Einziger Haken: ${gruende[0]}.` : "Lohnt sich anzuschauen.")
+    : ampel === "gelb" ? `Vielleicht: ${gruende.join(", ")}.`
     : `Eher nicht: ${[p1 === "rot" && (nStark > 15 ? "zu viele starke Anbieter (Red Ocean)" : "zu wenig Anbieter mit 10.000 € im Monat"), p2 === "rot" && `${topMarke} beherrscht die Nische`, p4 === "rot" && "niemand verkauft hier gut ab 50 €"].filter(Boolean).join(" und ")}.`;
   // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
   // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
@@ -2274,14 +2280,19 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   const rund = n => Math.round(n / 100) * 100;
   const stueck = medPreis ? [Math.round(von / medPreis), Math.round(bis / medPreis)] : null;
   const maxEk = stueck ? (2000 / (stueck[0] * 2)).toFixed(2).replace(".", ",") : null;
-  const moeglich = mittelfeld.length
-    ? `Möglich: Nach 6 bis 12 Monaten sind etwa ${euro(rund(von))} bis ${euro(rund(bis))} Umsatz im Monat realistisch (so viel schafft das Mittelfeld der Anbieter)` +
-      (stueck ? `, das sind rund ${stueck[0]} bis ${stueck[1]} Stück im Monat. Bei 20 bis 25 % Marge bleiben etwa ${euro(rund(von * 0.2))} bis ${euro(rund(bis * 0.25))} Gewinn im Monat. Für 2 Monate Ware bräuchtest du rund ${stueck[0] * 2} Stück, mit 2.000 € Budget dürfte ein Stück dann höchstens ${maxEk} € kosten (mit Versand). Sonst kleiner starten und nachbestellen` : "")
-    : "";
-  const schwachText = schwach.length ? schwach.slice(0, 2).map(p => `${p.marke} (${String(p.sterne).replace(".", ",")} Sterne)`).join(" und ") : "";
-  const naechster = ampel === "rot" ? "Nächster Schritt: Nicht weiter verfolgen, nimm die nächste Idee."
-    : `Nächster Schritt: ${listText && !compText ? "Achtung, diese Liste enthält alle Suchtreffer, auch andere Produkte. Schau zuerst in den Links, welche Konkurrenten wirklich dein Produkt verkaufen. Genauer wird es mit dem Dive (Competitors-Export). Dann öffne" : "Öffne"} unten bei den Konkurrenten ${schwachText ? schwachText : "die Top 3"} und lies die 1- bis 3-Sterne-Bewertungen. Wiederholt sich eine Beschwerde, die du lösen kannst? Dann Hersteller-Preise anfragen, denn der Einkaufspreis entscheidet über die Marge. Wenn nicht: nächste Idee.`;
-  const ergebnis = `Ampel ${ampel}. ` + [moeglich, naechster, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
+  // Kurz: Kennzahlen als Kästchen, nächster Schritt in einem Satz
+  const kennzahlen = mittelfeld.length ? "Kennzahlen: " + [
+    `Umsatz~${euro(rund(von))} bis ${euro(rund(bis))} im Monat`,
+    stueck && `Stück~${stueck[0]} bis ${stueck[1]} im Monat`,
+    `Gewinn~${euro(rund(von * 0.2))} bis ${euro(rund(bis * 0.25))} im Monat`,
+    maxEk && `Einkauf max.~${maxEk} € pro Stück (2 Monate Ware, 2.000 € Budget)`,
+    medGebuehr != null && `Amazon-Gebühr~${medGebuehr.toFixed(2).replace(".", ",")} € pro Stück`,
+  ].filter(Boolean).join("; ") : "";
+  const schwachText = schwach.length ? schwach.slice(0, 2).map(p => `${p.marke} (${String(p.sterne).replace(".", ",")} ★)`).join(" und ") : "die Top 3";
+  const naechster = ampel === "rot" ? "Nächster Schritt: nächste Idee nehmen."
+    : listText && !compText ? "Nächster Schritt: Dive-Export (Competitors und Keywords) für genau diesen Suchbegriff hochladen, die Suchliste enthält auch andere Produkte."
+    : `Nächster Schritt: Schlechte Bewertungen von ${schwachText} lesen. Kommt eine Beschwerde immer wieder, die du lösen kannst? Dann Hersteller anfragen.`;
+  const ergebnis = `Ampel ${ampel}. ` + [kennzahlen, naechster, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
   const grund = (ampel === "grün" ? "Prüfenswert: " : ampel === "gelb" ? "Mit Haken: " : "Raus: ") + fazit;
   return { name, ergebnis, grund };
 }
