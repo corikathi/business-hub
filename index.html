@@ -188,6 +188,16 @@ button.nchip.late{border-color:var(--red)}
 .plan-zaehler b{display:block;height:100%;background:var(--accent)}
 .plan-zeit{font-size:11px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){ .stufe.aktiv span{animation:none} }
+.schritt{border:1px solid var(--line);border-left:4px solid var(--sfarbe);border-radius:14px;background:var(--bg);padding:12px 14px;margin-bottom:12px}
+.schritt.s1{--sfarbe:var(--accent)}
+.schritt.s2{--sfarbe:var(--warn)}
+.schritt.s3{--sfarbe:var(--ok)}
+.schritt-kopf{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.schritt-kopf > span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;background:var(--sfarbe);color:#0f1216;flex:none}
+.schritt-kopf b{display:block;font-size:15px;color:var(--sfarbe)}
+.schritt-kopf small{display:block;font-size:12px;color:var(--muted)}
+.schritt .auftrag-karte,.schritt .idee-zeile{background:var(--panel)}
+.idee-tag{font-size:11px;color:var(--ok);font-weight:700}
 .nico-karte{display:flex;gap:16px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px}
 .nico-gross svg{width:72px;height:auto;display:block}
 .idee-zeile{display:grid;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);margin-bottom:8px}
@@ -677,20 +687,29 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
         <div class="nico-layout">
           <div class="nico-links">
             <div id="nicoKarte"></div>
-            <div id="ideenBereich"></div>
-            <h3 class="phase">Neue Recherche</h3>
-            <div class="vlist" id="richtungen"></div>
-            <div id="ideenGenerator"></div>
-            <form class="grid2" id="rechercheForm">
-              <input id="rThema" placeholder="Eigenes Thema, z. B. Haushalt und Ordnung" required maxlength="120">
-              <button type="submit">Recherche starten</button>
-            </form>
-            <div class="note" id="rHinweis"></div>
-            <div id="vorschlaege" hidden></div>
+            <div class="schritt s1">
+              <div class="schritt-kopf"><span>1</span><div><b>Ideen anfordern</b><small>Preis und Kategorie wählen, dann starten</small></div></div>
+              <div id="ideenGenerator"></div>
+            </div>
+            <div hidden>
+              <div class="vlist" id="richtungen"></div>
+              <form class="grid2" id="rechercheForm">
+                <input id="rThema" maxlength="120">
+                <button type="submit">Recherche starten</button>
+              </form>
+              <div class="note" id="rHinweis"></div>
+              <div id="vorschlaege"></div>
+            </div>
           </div>
           <div class="nico-rechts">
-            <h3 class="phase">Aufträge</h3>
-            <div id="auftraege"></div>
+            <div class="schritt s2">
+              <div class="schritt-kopf"><span>2</span><div><b>Nico arbeitet</b><small>Deine Anfragen und ihr Stand</small></div></div>
+              <div id="auftraege"></div>
+            </div>
+            <div class="schritt s3">
+              <div class="schritt-kopf"><span>3</span><div><b>Deine Ideen</b><small>Was Nico gefunden hat</small></div></div>
+              <div id="ideenBereich"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -941,8 +960,7 @@ let ideenKat = null, ideenPreis = "50–100 €";
 function renderIdeenGenerator(){
   const el = $("ideenGenerator");
   if (!el) return;
-  el.innerHTML = `<h3 class="phase">Produktideen generieren</h3>
-    <div class="note">Verkaufspreis Spanne</div>
+  el.innerHTML = `<div class="note">Verkaufspreis Spanne</div>
     <div class="vlist">${IDEEN_PREISE.map(p => `<button type="button" class="vchip ${p === ideenPreis ? "on" : ""}" data-preis="${esc(p)}">${esc(p)}</button>`).join("")}</div>
     <div class="note" style="margin-top:8px">Kategorie</div>
     <div class="vlist">${IDEEN_KATEGORIEN.map(k => `<button type="button" class="vchip ${k === ideenKat ? "on" : ""}" data-ideekat="${esc(k)}">${esc(k)}</button>`).join("")}</div>
@@ -1697,7 +1715,7 @@ async function loadAuftraege(){
   renderVorschlaege(new Set((data || []).map(a => String(a.thema).toLowerCase())));
   offeneRecherchen = (data || []).filter(a => a.status !== "fertig").length;
   const gepr = new Set((data || []).map(a => String(a.thema).toLowerCase()));
-  const ideen = VORSCHLAEGE.filter(v => !gepr.has(v.toLowerCase())).length;
+  const ideen = 0;
   const laufend = (data || []).find(a => a.status === "laeuft");
   const bereit = (data || []).some(a => a.status === "offen");
   scoutWaving = bereit || ideen > 0;
@@ -1718,7 +1736,7 @@ async function loadAuftraege(){
     ZONES[0].tagEl.classList.toggle("wink", scoutWaving);
   }
   renderNext();
-  if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Noch keine Recherche gestartet.</div>`; return; }
+  if (!(data || []).length) { $("auftraege").innerHTML = `<div class="empty">Gerade keine Anfrage. Starte bei Schritt 1.</div>`; return; }
   const label = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
   // Nico (Scout) steht über seinen Recherchen, mit demselben Status wie im Agenten-Panel
   // Solange ein Befehl im Hub auf Abholung wartet, sagt die Zeile das sofort
@@ -1737,7 +1755,7 @@ async function loadAuftraege(){
   const beiNico = aktiv.filter(a => auftragZustand(a) !== "du");
   const gruppe = (titel, liste) => liste.length ? `<h3 class="phase">${titel} (${liste.length})</h3>` + liste.map(a => auftragKarte(a, true)).join("") : "";
   const offen = aktiv.length;
-  $("auftraege").innerHTML = (offen ? `<h3 class="phase">Noch offen (${offen})</h3>` : "") + (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Keine offenen Aufträge.</div>`;
+  $("auftraege").innerHTML = (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Gerade keine Anfrage. Starte bei Schritt 1.</div>`;
   $("auftraege").innerHTML += (erledigt.length ? `<details class="aufklapp"><summary>Fertig (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
   zeigeNicoHinweis();
 }
@@ -1802,7 +1820,7 @@ function auftragKarte(a, mitKnoepfen){
     <div class="auftrag-karte st-${z}" data-id="${esc(a.id)}" data-thema="${esc(a.thema)}">
       <div class="ak-kopf"><b>${esc(a.thema)}</b><span class="ak-etikett st-${z}">${ZUSTAND_TEXT[z]}</span></div>
       <div class="ak-balken">${balken}</div>
-      <div class="ak-stufe">${stufe ? `Stufe ${stufe} von 4: ${STUFEN_NAMEN[stufe - 1]}` : "Noch keine Stufe"}</div>
+      <div class="ak-stufe">${stufe ? `Stufe ${Math.min(stufe, STUFEN_NAMEN.length)} von ${STUFEN_NAMEN.length}: ${STUFEN_NAMEN[Math.min(stufe, STUFEN_NAMEN.length) - 1]}` : "Noch keine Stufe"}</div>
       ${z === "du" && a.frage
         ? frageHtml(a.frage, a.empfehlung) + checklisteHtml(a)
         : (a.fortschritt ? `<div class="ak-text">${z === "du" ? "<b>Du bist dran:</b> " : ""}${esc(a.fortschritt)}</div>` : "")}
@@ -1969,16 +1987,17 @@ let nicoStand = null;
 const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "Bewertet", raus: "Raus"};
 async function loadIdeen(){
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
-  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(30);
+  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(100);
   const el = $("ideenBereich");
   if (!el) return;
-  if (error) { el.innerHTML = ""; return; }
-  if (!data || !data.length) { el.innerHTML = ""; return; }
-  el.innerHTML = `<h3 class="phase">Deine Ideen (${data.length})</h3>` + data.map(i => `
+  if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
+  if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>`; return; }
+  el.innerHTML = `<div class="note">${data.length} Ideen</div>` + data.map(i => `
     <div class="idee-zeile st-${esc(i.status.replace(/ /g, "-"))}">
       <div class="idee-kopf"><b>${esc(i.text)}</b><span class="idee-status">${IDEEN_STATUS[i.status] || esc(i.status)}</span></div>
       ${i.ergebnis ? `<div class="idee-text">${esc(i.ergebnis)}</div>` : ""}
-      ${i.grund ? `<small class="idee-grund">${esc(i.grund)}</small>` : ""}
+      ${i.richtung ? `<span class="idee-tag">${esc(i.richtung)}</span>` : ""}
+      ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund)}</small>` : ""}
     </div>`).join("");
 }
 async function loadNicoStand(){
@@ -2012,7 +2031,7 @@ $("nicoHinweis") && $("nicoHinweis").addEventListener("click", e => {
 });
 // Der Hinweis sitzt unten links in der Bühne, über dem Büro, nicht mehr oben
 $("labels") && $("nicoHinweis") && $("labels").appendChild($("nicoHinweis"));
-const STUFEN_NAMEN = ["Ideen-Scan", "Deine Auswahl", "Helium-Check", "Tiefencheck"];
+const STUFEN_NAMEN = ["Ideen erzeugen", "Ergebnis"];
 function zeitVorher(iso){
   if (!iso) return "noch nie";
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -2033,10 +2052,8 @@ function nicoPlan(){
   const prozent = Math.min(100, Math.round(seiten / 60 * 100));
   return `
     <div class="nico-plan">
-      <div class="plan-stufen">${stufen}</div>
       <div class="plan-was">${esc(s.was_tut || "Gerade nichts offen")}</div>
       ${s.naechster_schritt ? `<div class="plan-next">Als Nächstes: ${esc(s.naechster_schritt)}</div>` : ""}
-      <div class="plan-zaehler"><span>Seiten heute: ${seiten} von 60</span><i><b style="width:${prozent}%"></b></i></div>
       <small class="plan-zeit">Zuletzt aktiv: ${zeitVorher(s.letzte_aktivitaet)}</small>
     </div>`;
 }
