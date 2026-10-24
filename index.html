@@ -212,6 +212,15 @@ button.nchip.late{border-color:var(--red)}
 .ideen-gruppe summary{color:var(--ink);font-size:14px}
 .ideen-gruppe[open] summary{margin-bottom:6px}
 .aufklapp.unter{margin:2px 0 8px}
+.dd-leiste{margin:6px 0 10px}
+.dd-knopf{justify-self:start;padding:4px 10px;font-size:12px;border-radius:9px}
+.dd-punkte{margin:2px 0 0;padding-left:18px;font-size:12px;color:var(--ink);display:grid;gap:2px}
+.idee-zeile.rot{opacity:.75}
+.dd-links{margin:2px 0 0;padding-left:18px;display:grid;gap:2px}
+.dd-links a{color:var(--accent)}
+.idee-status.ampel-grün{color:#0f1216;background:var(--ok);border-color:var(--ok)}
+.idee-status.ampel-gelb{color:#0f1216;background:var(--warn);border-color:var(--warn)}
+.idee-status.ampel-rot{color:#0f1216;background:var(--red);border-color:var(--red)}
 .aufklapp.unter summary{font-size:12px;color:var(--muted)}
 .idee-zeile.gut .idee-status{white-space:nowrap}
 .idee-text{font-size:13px}
@@ -764,6 +773,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const PHASES = ["Vorbereitung","Gewerbe und Finanzamt","Konten und Amazon-Konto","Produkt finden","Pflichten und Codes","Ware und Import","Bis zum ersten Verkauf"];
 const START_QUESTS = [
@@ -1999,26 +2009,36 @@ async function loadIdeen(){
   const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(100);
   const el = $("ideenBereich");
   if (!el) return;
+  const hochladen = `<div class="dd-leiste"><button type="button" class="ghost" data-dd="neu">Data-Dive-Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
-  if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>`; return; }
-  // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft
-  const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : i.status === "neu" ? 2 : 3;
+  if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
+  // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft, rot nach Data Dive
+  const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
   const gruppen = new Map();
   for (const i of data) { const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
   if (ideenOffen === null) ideenOffen = new Set([gruppen.keys().next().value]);
-  const karte = i => `
-      <div class="idee-zeile ${["gut", "haken", "neu", ""][rang(i)]}">
-        <div class="idee-kopf"><b>${esc(i.text)}</b>${i.ergebnis ? `<span class="idee-status">${esc(i.ergebnis.replace(/, geschätzt.*$/, ""))}</span>` : ""}</div>
-        ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken): /, ""))}</small>` : ""}
+  const karte = i => {
+    const ampel = /^Ampel (grün|gelb|rot)\. /.exec(i.ergebnis || "");
+    const pille = ampel ? `<span class="idee-status ampel-${ampel[1]}">Ampel ${ampel[1]}</span>`
+      : i.ergebnis ? `<span class="idee-status">${esc(i.ergebnis.replace(/, geschätzt.*$/, ""))}</span>` : "";
+    const details = ampel ? `<ul class="dd-punkte">${i.ergebnis.slice(ampel[0].length).split(/\. (?=[A-ZÄÖÜ])/).map(ddPunkt).join("")}</ul>` : "";
+    return `
+      <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
+        <div class="idee-kopf"><b>${esc(i.text)}</b>${pille}</div>
+        ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
+        ${details}
+        <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Data-Dive-Export hochladen"}</button>
       </div>`;
+  };
   const unter = (titel, liste) => liste.length ? `<details class="aufklapp unter"><summary>${titel} (${liste.length})</summary>${liste.map(karte).join("")}</details>` : "";
-  el.innerHTML = `<div class="note">Grün = lohnt sich anzuschauen. Der Rest ist eingeklappt.</div>` + [...gruppen].map(([kat, liste]) => {
-    const gut = liste.filter(i => rang(i) === 0), haken = liste.filter(i => rang(i) === 1), offen = liste.filter(i => rang(i) >= 2);
+  el.innerHTML = `<div class="note">Grün = lohnt sich anzuschauen. Der Rest ist eingeklappt. Zu jeder Idee kannst du einen Data-Dive-Export (ZIP) hochladen, der Hub rechnet die Ampel aus.</div>` + hochladen + [...gruppen].map(([kat, liste]) => {
+    const gut = liste.filter(i => rang(i) === 0), haken = liste.filter(i => rang(i) === 1), offen = liste.filter(i => rang(i) === 2 || rang(i) === 3), rot = liste.filter(i => rang(i) === 4);
     return `<details class="aufklapp ideen-gruppe" data-ideengruppe="${esc(kat)}" ${ideenOffen.has(kat) ? "open" : ""}>
       <summary>${esc(kat)}: ${gut.length ? `<span class="idee-tag">${gut.length} prüfenswert</span>` : `<span class="muted">keine prüfenswert</span>`}</summary>
       ${gut.map(karte).join("")}
       ${unter("Mit Haken", haken)}
       ${unter("Noch nicht sortiert", offen)}
+      ${unter("Rot nach Data Dive", rot)}
     </details>`;
   }).join("");
 }
@@ -2027,6 +2047,116 @@ $("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
   if (!g || !ideenOffen) return;
   if (g.open) ideenOffen.add(g.dataset.ideengruppe); else ideenOffen.delete(g.dataset.ideengruppe);
 }, true);
+
+// Ein Punkt der Data-Dive-Auswertung; die Konkurrenten werden zu Amazon-Links
+function ddPunkt(t){
+  t = t.replace(/\.$/, "");
+  if (!/^Konkurrenten: /.test(t)) return `<li>${esc(t)}</li>`;
+  const links = t.replace(/^Konkurrenten: /, "").split("; ").map(k => {
+    const a = /\b(B0[A-Z0-9]{8})\b/.exec(k);
+    return `<li>${a ? `<a href="https://www.amazon.de/dp/${a[1]}" target="_blank" rel="noopener">${esc(k)}</a>` : esc(k)}</li>`;
+  }).join("");
+  return `<li>Konkurrenten:<ol class="dd-links">${links}</ol></li>`;
+}
+
+// ---------- Data-Dive-Export auswerten (gleiche Regeln wie nico/nische-check.mjs) ----------
+let ddZiel = null;
+const ddInput = document.createElement("input");
+ddInput.type = "file"; ddInput.accept = ".zip,.csv"; ddInput.hidden = true;
+document.body.appendChild(ddInput);
+$("ideenBereich") && $("ideenBereich").addEventListener("click", e => {
+  const b = e.target.closest("[data-dd]");
+  if (!b) return;
+  ddZiel = b.dataset.dd;
+  ddInput.value = "";
+  ddInput.click();
+});
+function ddCsv(text){
+  const zeilen = [];
+  for (const z of text.split(/\r?\n/)) {
+    if (!z.trim()) continue;
+    const felder = []; let f = "", q = false;
+    for (let i = 0; i < z.length; i++) {
+      const c = z[i];
+      if (q) { if (c === '"' && z[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
+      else if (c === '"') q = true; else if (c === ",") { felder.push(f); f = ""; } else f += c;
+    }
+    felder.push(f); zeilen.push(felder);
+  }
+  return zeilen;
+}
+function nischeAuswerten(compText, kwText){
+  const zahl = s => { const n = parseFloat(String(s || "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
+  const monate = s => { const j = /(\d+)\s*yr/.exec(s || ""), m = /(\d+)\s*mo/.exec(s || ""); return (j ? +j[1] * 12 : 0) + (m ? +m[1] : 0); };
+  const median = a => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
+  const euro = n => Math.round(n).toLocaleString("de-DE") + " €";
+  const zeilen = ddCsv(compText);
+  const zeile = name => (zeilen.find(z => z[1] === name) || []).slice(6);
+  const produkte = zeile("ASIN").map((asin, i) => ({
+    asin, marke: zeile("Brand")[i], sterne: zahl(zeile("Rating")[i]), bewertungen: zahl(zeile("Review Count")[i]),
+    alter: monate(zeile("Listing Age")[i]), preis: zahl(zeile("Price")[i]), umsatz: zahl(zeile("30d Revenue")[i]) || 0,
+  }));
+  if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es der Competitors-Export?");
+  let name = "", topSV = 0;
+  if (kwText) for (const z of ddCsv(kwText).slice(1)) { const sv = zahl(z[2]); if (sv > topSV) { topSV = sv; name = z[1]; } }
+  name = name ? name.charAt(0).toUpperCase() + name.slice(1) : "Neue Nische";
+  const starkeMarken = [...new Set(produkte.filter(p => p.umsatz >= 15000).map(p => p.marke))];
+  const p1 = starkeMarken.length >= 5 ? "grün" : starkeMarken.length >= 3 ? "gelb" : "rot";
+  const gesamt = produkte.reduce((s, p) => s + p.umsatz, 0);
+  const proMarke = {};
+  for (const p of produkte) proMarke[p.marke] = (proMarke[p.marke] || 0) + p.umsatz;
+  const [topMarke, topUmsatz] = Object.entries(proMarke).sort((a, b) => b[1] - a[1])[0];
+  const anteil = gesamt ? Math.round(topUmsatz / gesamt * 100) : 0;
+  const p2 = anteil > 50 ? "rot" : anteil > 30 ? "gelb" : "grün";
+  const medBew = median(produkte.map(p => p.bewertungen));
+  const p3 = medBew <= 500 ? "grün" : medBew <= 1500 ? "gelb" : "rot";
+  const medPreis = median(produkte.map(p => p.preis));
+  const p4 = medPreis >= 25 ? "grün" : medPreis >= 15 ? "gelb" : "rot";
+  const neue = produkte.filter(p => p.alter > 0 && p.alter < 18 && p.umsatz >= 10000);
+  const p5 = neue.length >= 2 ? "grün" : neue.length === 1 ? "gelb" : "rot";
+  const schwach = produkte.filter(p => p.sterne != null && p.sterne <= 4.2 && p.bewertungen >= 100);
+  const punkte = [p1, p2, p3, p4, p5];
+  const ampel = p1 === "rot" || p2 === "rot" ? "rot" : punkte.filter(x => x === "grün").length >= 4 ? "grün" : "gelb";
+  const texte = [
+    `Nachfrage ${p1}: ${starkeMarken.length} Marken über 15.000 €/Monat (Ziel 5)`,
+    `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
+    `Bewertungen ${p3}: Median ${medBew}`,
+    `Preis ${p4}: Median ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
+    `Neue Anbieter ${p5}: ${neue.length} unter 18 Monaten mit über 10.000 €/Monat`,
+    schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + String(p.sterne).replace(".", ",")).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
+    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${String(p.sterne).replace(".", ",")} Sterne)`).join("; "),
+  ];
+  const ergebnis = `Ampel ${ampel}. Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter. ` + texte.join(". ") + ".";
+  const grund = ampel === "grün" ? "Prüfenswert: echte Zahlen aus Data Dive, Ampel grün"
+    : ampel === "gelb" ? "Mit Haken: " + texte.filter((_, i) => i < 5 && punkte[i] !== "grün").map(t => t.split(" ")[0]).join(", ") + " nicht grün (Data Dive)"
+    : "Raus: " + (p2 === "rot" ? "eine Marke beherrscht die Nische" : "zu wenig Nachfrage") + " (Data Dive)";
+  return { name, ergebnis, grund };
+}
+ddInput.addEventListener("change", async () => {
+  const datei = ddInput.files && ddInput.files[0];
+  if (!datei || !ddZiel) return;
+  try {
+    let compText = null, kwText = null;
+    if (/\.zip$/i.test(datei.name)) {
+      if (!window.JSZip) throw new Error("ZIP-Leser konnte nicht geladen werden. Bitte Seite neu laden.");
+      const zip = await JSZip.loadAsync(datei);
+      for (const [pfad, f] of Object.entries(zip.files)) {
+        if (/competitors\.csv$/i.test(pfad)) compText = await f.async("string");
+        if (/keywords\.csv$/i.test(pfad)) kwText = await f.async("string");
+      }
+    } else compText = await datei.text();
+    if (!compText) throw new Error("In der ZIP fehlt die Datei …-competitors.csv.");
+    const r = nischeAuswerten(compText, kwText);
+    const { error } = ddZiel === "neu"
+      ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund })
+      : await sb.from("ideen").update({ status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel);
+    if (error) throw new Error(error.message);
+    toast(`Data Dive ausgewertet: ${r.ergebnis.split(".")[0]}`);
+    loadIdeen();
+  } catch (err) {
+    showErr("Export konnte nicht ausgewertet werden: " + err.message);
+  }
+});
 async function loadNicoStand(){
   const { data, error } = await sb.from("agent_stand").select("*").eq("id", "scout").maybeSingle();
   if (error) return;
