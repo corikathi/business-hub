@@ -206,6 +206,11 @@ button.nchip.late{border-color:var(--red)}
 .idee-zeile.bewertet .idee-status{color:var(--ok);border-color:var(--ok)}
 .idee-zeile.wird-geprüft .idee-status{color:var(--accent);border-color:var(--accent)}
 .idee-zeile.raus{opacity:.6}
+.idee-zeile.gut{border-color:var(--ok)}
+.idee-zeile.gut .idee-status{color:#0f1216;background:var(--ok);border-color:var(--ok)}
+.idee-zeile.haken .idee-status{color:var(--warn);border-color:var(--warn)}
+.ideen-gruppe summary{color:var(--ink);font-size:14px}
+.ideen-gruppe[open] summary{margin-bottom:6px}
 .idee-text{font-size:13px}
 .idee-grund{color:var(--muted);font-size:12px}
 .nico-hinweis{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(245,194,107,.08);border:1px solid var(--warn);border-radius:14px;padding:12px 16px}
@@ -1984,6 +1989,8 @@ const AUFTRAG_TEXT = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 let nicoStand = null;
 // Ideen-Speicher: deine Ideen und Nicos Ergebnis dazu
 const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "Bewertet", raus: "Raus"};
+// Welche Kategorien aufgeklappt sind, bleibt beim automatischen Neuladen erhalten
+let ideenOffen = null;
 async function loadIdeen(){
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
   const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(100);
@@ -1991,14 +1998,30 @@ async function loadIdeen(){
   if (!el) return;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>`; return; }
-  el.innerHTML = `<div class="note">${data.length} Ideen</div>` + data.map(i => `
-    <div class="idee-zeile st-${esc(i.status.replace(/ /g, "-"))}">
-      <div class="idee-kopf"><b>${esc(i.text)}</b><span class="idee-status">${IDEEN_STATUS[i.status] || esc(i.status)}</span></div>
-      ${i.ergebnis ? `<div class="idee-text">${esc(i.ergebnis)}</div>` : ""}
-      ${i.richtung ? `<span class="idee-tag">${esc(i.richtung)}</span>` : ""}
-      ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund)}</small>` : ""}
-    </div>`).join("");
+  // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft
+  const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : i.status === "neu" ? 2 : 3;
+  const gruppen = new Map();
+  for (const i of data) { const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
+  if (ideenOffen === null) ideenOffen = new Set([gruppen.keys().next().value]);
+  el.innerHTML = [...gruppen].map(([kat, liste]) => {
+    liste.sort((a, b) => rang(a) - rang(b));
+    const gut = liste.filter(i => rang(i) === 0).length;
+    return `<details class="aufklapp ideen-gruppe" data-ideengruppe="${esc(kat)}" ${ideenOffen.has(kat) ? "open" : ""}>
+      <summary>${esc(kat)} (${liste.length})${gut ? ` · <span class="idee-tag">${gut} prüfenswert</span>` : ""}</summary>
+      ${liste.map(i => `
+      <div class="idee-zeile ${["gut", "haken", "neu", ""][rang(i)]}">
+        <div class="idee-kopf"><b>${esc(i.text)}</b><span class="idee-status">${["Prüfenswert", "Mit Haken", "Ungeprüft", IDEEN_STATUS[i.status] || esc(i.status)][rang(i)]}</span></div>
+        ${i.ergebnis ? `<div class="idee-text">${esc(i.ergebnis)}</div>` : ""}
+        ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken): /, ""))}</small>` : ""}
+      </div>`).join("")}
+    </details>`;
+  }).join("");
 }
+$("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
+  const g = e.target.closest && e.target.closest("[data-ideengruppe]");
+  if (!g || !ideenOffen) return;
+  if (g.open) ideenOffen.add(g.dataset.ideengruppe); else ideenOffen.delete(g.dataset.ideengruppe);
+}, true);
 async function loadNicoStand(){
   const { data, error } = await sb.from("agent_stand").select("*").eq("id", "scout").maybeSingle();
   if (error) return;
