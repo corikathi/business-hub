@@ -1066,7 +1066,7 @@ async function agentAktion(e){
     // Pausieren: der Auftrag wartet auf dich, Frage und Optionen bleiben sichtbar
     if (wert === "Pausieren") {
       const { error } = await sb.from("recherche_auftraege")
-        .update({ status: "offen", wartet_auf: "corinna", fortschritt: "Pausiert, bis du Helium 10 hast. Danach hier weitermachen." }).eq("id", id);
+        .update({ status: "offen", wartet_auf: "corinna", fortschritt: "Pausiert. Melde dich, wenn es weitergehen soll." }).eq("id", id);
       if (error) return showErr("Pausieren konnte nicht gespeichert werden: " + error.message);
       loadAgenten();
       return loadAuftraege();
