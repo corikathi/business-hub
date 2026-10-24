@@ -2157,7 +2157,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     const lz = ddCsv(listText), k = lz.findIndex(r => r.some(c => c.trim() === "ASINs"));
     const kopf = lz[k] || [];
     const sp = n => kopf.findIndex(c => c.trim().startsWith(n));
-    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier");
+    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier"), iI = kopf.findIndex(c => c.trim() === "Img");
     const seit = s => {
       const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "").trim());
       if (!d) return zahl(s) ?? monate(s);
@@ -2166,7 +2166,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     };
     produkte = lz.slice(k + 1).filter(z => /^B0[A-Z0-9]{8}$/.test((z[iA] || "").trim())).map(z => ({
       asin: z[iA].trim(), marke: z[iB], preis: zahl(z[iP]), umsatz: zahl(z[iR]) || 0, sterne: zahl(z[iS]),
-      bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "",
+      bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "", bilder: iI >= 0 ? zahl(z[iI]) : null,
     }));
   }
   if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es ein Data-Dive-Export mit Konkurrenten?");
@@ -2181,8 +2181,13 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   // Ohne Keyword-Datei: Name aus dem Dateinamen (die Produktliste heißt wie der Suchbegriff)
   if (!name && dateiname && !/^niche-/i.test(dateiname)) name = dateiname.replace(/\.(csv|xlsx?|zip)$/i, "").replace(/\s*\(\d+\)$/, "").trim();
   name = name ? name.charAt(0).toUpperCase() + name.slice(1) : "Neue Nische";
-  const starkeMarken = [...new Set(produkte.filter(p => p.umsatz >= 15000).map(p => p.marke))];
-  const p1 = starkeMarken.length >= 5 ? "grün" : starkeMarken.length >= 3 ? "gelb" : "rot";
+  // Regeln von Corinna (25.10.2026): Verkaufspreis ab 50 €, mindestens 5 Anbieter mit 10.000 € im Monat, Konkurrenz mit Schwächen
+  const starkeMarken = [...new Set(produkte.filter(p => p.umsatz >= 10000).map(p => p.marke))];
+  // Blue Ocean: 5 bis 10 starke Anbieter sind das Ziel; zu wenige = kein Markt, zu viele = Red Ocean
+  const nStark = starkeMarken.length;
+  // Eine Suchliste enthält auch fremde Produkte; dort ist „zu viele“ nur ein Hinweis, kein K.-o.
+  const nurSuchliste = !!listText && !compText;
+  const p1 = nStark < 3 || (nStark > 15 && !nurSuchliste) ? "rot" : nStark >= 5 && nStark <= 10 ? "grün" : "gelb";
   const gesamt = produkte.reduce((s, p) => s + p.umsatz, 0);
   const proMarke = {};
   for (const p of produkte) proMarke[p.marke] = (proMarke[p.marke] || 0) + p.umsatz;
@@ -2192,20 +2197,35 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   const medBew = median(produkte.map(p => p.bewertungen));
   const p3 = medBew <= 500 ? "grün" : medBew <= 1500 ? "gelb" : "rot";
   const medPreis = median(produkte.map(p => p.preis));
-  const p4 = medPreis >= 25 ? "grün" : medPreis >= 15 ? "gelb" : "rot";
+  // Preis: Zahlen Kunden hier 50 € oder mehr? Gezählt werden Anbieter ab 50 € mit mindestens 10.000 € im Monat
+  const ab50 = produkte.filter(p => p.preis >= 50 && p.umsatz >= 10000);
+  const p4 = ab50.length >= 2 ? "grün" : ab50.length === 1 ? "gelb" : "rot";
   const neue = produkte.filter(p => p.alter > 0 && p.alter < 18 && p.umsatz >= 10000);
   const p5 = neue.length >= 2 ? "grün" : neue.length === 1 ? "gelb" : "rot";
+  // Schwächen der starken Anbieter (ab 10.000 €): schwache Bewertungen oder wenige Produktbilder
   const schwach = produkte.filter(p => p.sterne != null && p.sterne <= 4.2 && p.bewertungen >= 100);
-  const punkte = [p1, p2, p3, p4, p5];
-  const ampel = p1 === "rot" || p2 === "rot" ? "rot" : punkte.filter(x => x === "grün").length >= 4 ? "grün" : "gelb";
+  const starke = produkte.filter(p => p.umsatz >= 10000);
+  const wenigBilder = starke.filter(p => p.bilder != null && p.bilder < 7);
+  const mitSchwaeche = starke.filter(p => (p.sterne != null && p.sterne <= 4.2) || (p.bilder != null && p.bilder < 7));
+  const p6 = mitSchwaeche.length >= 2 ? "grün" : mitSchwaeche.length === 1 ? "gelb" : "rot";
+  const p7 = topSV ? (topSV >= 3000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
+  const punkte = [p1, p2, p3, p4, p5, p6, p7].filter(Boolean);
+  // Rot, sobald Nachfrage/Blue Ocean, Marke oder Preis rot ist; grün, wenn nichts rot und höchstens ein Punkt gelb ist
+  const ampel = p1 === "rot" || p2 === "rot" || p4 === "rot" ? "rot"
+    : !punkte.includes("rot") && punkte.filter(x => x === "gelb").length <= 1 ? "grün" : "gelb";
+  const komma = n => String(n).replace(".", ",");
   const texte = [
-    `Nachfrage ${p1}: ${starkeMarken.length} Marken über 15.000 €/Monat (Ziel 5)`,
+    `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
+    p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 3.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
     `Bewertungen ${p3}: Median ${Math.round(medBew)}`,
-    `Preis ${p4}: Median ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
+    `Preis ${p4}: ${ab50.length} Anbieter verkaufen ab 50 € mit mindestens 10.000 €/Monat${ab50.length ? ` (${ab50.slice(0, 4).map(p => p.marke + " " + p.preis.toFixed(2).replace(".", ",") + " €").join(", ")})` : ""}, Mittel der Nische ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
     `Neue Anbieter ${p5}: ${neue.length} unter 18 Monaten mit über 10.000 €/Monat`,
-    schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + String(p.sterne).replace(".", ",")).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
-    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${String(p.sterne).replace(".", ",")} Sterne)`).join("; "),
+    `Schwächen ${p6}: ${mitSchwaeche.length} von ${starke.length} starken Anbietern mit Schwäche` +
+      (mitSchwaeche.length ? ` (${mitSchwaeche.slice(0, 6).map(p => p.marke + (p.sterne <= 4.2 ? " " + komma(p.sterne) + " Sterne" : "") + (p.bilder != null && p.bilder < 7 ? " nur " + p.bilder + " Bilder" : "")).join(", ")})` : "")
+      + (starke.length && starke.every(p => p.bilder == null) ? ". Bilder prüfst du selbst in den Links (der Dive-Export zählt sie nicht)" : ""),
+    schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + komma(p.sterne)).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
+    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${komma(p.sterne)} Sterne${p.bilder != null ? ", " + p.bilder + " Bilder" : ""})`).join("; "),
   ];
   // Die Produktliste kennt die Amazon-Gebühr pro Stück, das hilft bei der Rechnung
   const medGebuehr = median(produkte.map(p => p.gebuehr ?? null));
@@ -2216,15 +2236,17 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   }
   // In Worten: lohnt es sich, was ist möglich, was ist der nächste Schritt
   const gruende = [
-    p1 !== "grün" && "nur wenige Anbieter verdienen richtig gut",
+    p1 !== "grün" && (nStark > 10 ? "es sind schon sehr viele starke Anbieter da" : "nur wenige Anbieter verdienen richtig gut"),
+    p7 && p7 !== "grün" && "es wird eher wenig gesucht",
     p2 !== "grün" && `${topMarke} ist sehr stark (${anteil} % vom Umsatz)`,
     p3 !== "grün" && "die Großen haben schon viele Bewertungen",
-    p4 !== "grün" && "der Preis ist niedrig",
+    p4 !== "grün" && "kaum jemand verkauft hier gut ab 50 €",
     p5 !== "grün" && "neue Anbieter tun sich schwer",
+    p6 !== "grün" && "die Konkurrenz hat kaum sichtbare Schwächen",
   ].filter(Boolean);
   const fazit = ampel === "grün" ? "Ja, lohnt sich anzuschauen: genug Nachfrage und kein übermächtiger Platzhirsch."
     : ampel === "gelb" ? `Vielleicht. Der Markt ist da (${euro(gesamt)} im Monat), aber ${gruende.join(" und ")}. Lohnt sich nur, wenn du etwas spürbar besser machst.`
-    : `Eher nicht: ${p2 === "rot" ? `${topMarke} beherrscht die Nische` : "zu wenig Nachfrage"}.`;
+    : `Eher nicht: ${[p1 === "rot" && (nStark > 15 ? "zu viele starke Anbieter (Red Ocean)" : "zu wenig Anbieter mit 10.000 € im Monat"), p2 === "rot" && `${topMarke} beherrscht die Nische`, p4 === "rot" && "niemand verkauft hier gut ab 50 €"].filter(Boolean).join(" und ")}.`;
   // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
   // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
   const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
