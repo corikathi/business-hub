@@ -398,6 +398,7 @@ span.ampel{display:inline-block;cursor:default}
 .kachel small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vchip{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;box-shadow:none}
 .vchip:hover{border-color:var(--accent)}
+.vchip.on{border-color:var(--accent);color:var(--accent);background:rgba(95,212,255,.10)}
 .pd{font-family:"JetBrains Mono",monospace;font-size:11px;margin-top:2px}
 .entform textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;resize:vertical}
 #wissenList details{padding:9px 0;border-bottom:1px solid var(--line)}
@@ -677,6 +678,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
             <div id="ideenBereich"></div>
             <h3 class="phase">Neue Recherche</h3>
             <div class="vlist" id="richtungen"></div>
+            <div id="ideenGenerator"></div>
             <form class="grid2" id="rechercheForm">
               <input id="rThema" placeholder="Eigenes Thema, z. B. Haushalt und Ordnung" required maxlength="120">
               <button type="submit">Recherche starten</button>
@@ -930,8 +932,41 @@ async function befehlSenden(agent, aktion, thema, auftragId, wert){
   return true;
 }
 
+// Ideen generieren: du wählst Kategorie und Preisspanne, Nico erzeugt die Ideen
+const IDEEN_KATEGORIEN = ["Haushalt", "Küche", "Bad", "Haustier", "Sport", "Büro", "Reisen", "Schlafen", "Outdoor"];
+const IDEEN_PREISE = ["15–25 €", "25–40 €", "40–60 €"];
+let ideenKat = null, ideenPreis = "25–40 €";
+function renderIdeenGenerator(){
+  const el = $("ideenGenerator");
+  if (!el) return;
+  el.innerHTML = `<h3 class="phase">Ideen generieren</h3>
+    <div class="vlist">${IDEEN_PREISE.map(p => `<button type="button" class="vchip ${p === ideenPreis ? "on" : ""}" data-preis="${esc(p)}">${esc(p)}</button>`).join("")}</div>
+    <div class="vlist" style="margin-top:6px">${IDEEN_KATEGORIEN.map(k => `<button type="button" class="vchip ${k === ideenKat ? "on" : ""}" data-ideekat="${esc(k)}">${esc(k)}</button>`).join("")}</div>
+    <input id="ideenNotiz" placeholder="Hinweis, z. B. eher nachhaltig, kein Kinderprodukt" maxlength="160" style="margin-top:6px;width:100%">
+    <button type="button" id="ideenStart" style="margin-top:6px">Ideen generieren</button>
+    <div class="note" id="ideenHinweis"></div>`;
+}
+$("ideenGenerator") && $("ideenGenerator").addEventListener("click", async e => {
+  const preis = e.target.closest("[data-preis]");
+  if (preis) { ideenPreis = preis.dataset.preis; return renderIdeenGenerator(); }
+  const kat = e.target.closest("[data-ideekat]");
+  if (kat) { ideenKat = kat.dataset.ideekat; return renderIdeenGenerator(); }
+  if (!e.target.closest("#ideenStart")) return;
+  if (!ideenKat) { $("ideenHinweis").textContent = "Bitte erst eine Kategorie wählen."; return; }
+  const notiz = ($("ideenNotiz").value || "").trim();
+  const thema = `Ideen generieren: ${ideenKat} (${ideenPreis})`;
+  if (letzteAuftraege.some(a => a.thema === thema && a.status !== "fertig")) { $("ideenHinweis").textContent = "Diese Ideen-Runde läuft schon."; return; }
+  const fortschritt = `Nico erzeugt 15 bis 20 Ideen für ${ideenKat}, Preis ${ideenPreis}${notiz ? `. Hinweis: ${notiz}` : ""}`;
+  const { error } = await sb.from("recherche_auftraege").insert({ thema, status: "offen", wartet_auf: "nico", fortschritt });
+  if (error) { $("ideenHinweis").textContent = "Konnte nicht angelegt werden: " + error.message; return; }
+  $("ideenHinweis").textContent = `„${thema}“ ist angelegt. Nico erzeugt die Ideen beim nächsten Lauf.`;
+  loadAgenten();
+  loadAuftraege();
+});
+
 async function loadAgenten(){
   renderRichtungen();
+  renderIdeenGenerator();
   const { data: auftraege, error: e1 } = await sb.from("recherche_auftraege").select("*").order("created_at", { ascending: false }).limit(20);
   if (e1) return showErr("Aufträge konnten nicht geladen werden: " + e1.message);
   const { data: befehle, error: e2 } = await sb.from("agent_befehle").select("*").eq("erledigt", false).order("created_at", { ascending: false });
