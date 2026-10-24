@@ -221,6 +221,9 @@ button.nchip.late{border-color:var(--red)}
 .dd-fazit p{margin:0}
 .dd-fazit b{color:var(--accent)}
 .dd-such{color:var(--ink);user-select:all}
+.dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
+.dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
+.dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
 .idee-zeile .idee-grund{font-size:13px;color:var(--ink)}
 .dd-links a{color:var(--accent)}
 .idee-status.ampel-grün{color:#0f1216;background:var(--ok);border-color:var(--ok)}
@@ -729,6 +732,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
             </div>
             <div class="schritt s3">
               <div class="schritt-kopf"><span>3</span><div><b>Deine Ideen</b><small>Was Nico gefunden hat</small></div></div>
+              <div id="ddStatus" class="dd-status" hidden></div>
               <div id="ideenBereich"></div>
             </div>
           </div>
@@ -2087,6 +2091,15 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", e => {
   ddInput.value = "";
   ddInput.click();
 });
+// Rückmeldung zum Hochladen, direkt über der Ideen-Liste
+function ddMeldung(text, art){
+  const el = $("ddStatus");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "dd-status " + (art || "");
+  el.hidden = !text;
+  el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
 function ddCsv(text){
   const zeilen = [];
   for (const z of text.split(/\r?\n/)) {
@@ -2183,6 +2196,7 @@ function nischeAuswerten(compText, kwText){
 ddInput.addEventListener("change", async () => {
   const dateien = [...(ddInput.files || [])];
   if (!dateien.length || !ddZiel) return;
+  ddMeldung(`Wird ausgewertet: ${dateien.map(d => d.name).join(", ")} …`, "");
   try {
     // Jede Datei als Text (CSV) lesen; Excel wird in CSV umgewandelt. Welche Tabelle es ist, erkennt der Inhalt.
     let compText = null, kwText = null;
@@ -2206,16 +2220,22 @@ ddInput.addEventListener("change", async () => {
       } else if (/\.xlsx?$/i.test(datei.name)) await excel(await datei.arrayBuffer());
       else zuordnen(await datei.text());
     }
-    if (!compText) throw new Error("Die Konkurrenten-Tabelle (Competitors) fehlt. Lade die ZIP oder die Competitors-Datei hoch.");
+    if (!compText) throw new Error(kwText
+      ? "Das ist nur die Keyword-Datei. Für die Ampel brauche ich die Competitors-Datei (die Tabelle mit den Konkurrenten). Wähle beide Dateien zusammen aus oder lade die ZIP hoch."
+      : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP oder die Competitors-Datei hoch.");
     const r = nischeAuswerten(compText, kwText);
-    const { error } = ddZiel === "neu"
-      ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund })
-      : await sb.from("ideen").update({ status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel);
+    const { data: gespeichert, error } = ddZiel === "neu"
+      ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
+      : await sb.from("ideen").update({ status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
     if (error) throw new Error(error.message);
-    toast(`Data Dive ausgewertet: ${r.ergebnis.split(".")[0]}`);
+    if (!gespeichert || !gespeichert.length) throw new Error("Die Idee wurde nicht gefunden. Bitte Seite neu laden und noch einmal versuchen.");
+    const idee = gespeichert[0];
+    // Die Kategorie der Idee aufklappen, damit du das Ergebnis gleich siehst
+    if (ideenOffen) ideenOffen.add(idee.richtung || "Ohne Kategorie");
+    ddMeldung(`Fertig: „${idee.text}“ ist ausgewertet, ${r.ergebnis.split(".")[0]}. Das Ergebnis steht bei der Idee.`, "ok");
     loadIdeen();
   } catch (err) {
-    showErr("Export konnte nicht ausgewertet werden: " + err.message);
+    ddMeldung("Hat nicht geklappt: " + err.message, "fehler");
   }
 });
 async function loadNicoStand(){
