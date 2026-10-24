@@ -909,13 +909,17 @@ async function loadAll(){
 
 // ---------- Agenten steuern: Knöpfe schreiben Befehle, der Agent holt sie ab ----------
 // Der Hub setzt nie selbst „arbeitet“. Das passiert erst, wenn der Agent den Befehl ausführt.
+const HELIUM_KATEGORIEN = ["Küche", "Haushalt", "Haustier", "Sport", "Bad"];
 const RICHTUNGEN = ["Alle Richtungen vergleichen", "Besser schlafen", "Pilates und Yoga", "Hundealltag", "Bad und Haare", "Küche mit Design"];
 const AGENT_STATUS = {offen: "wartet", laeuft: "arbeitet", fertig: "fertig"};
 
 function renderRichtungen(){
   // Verworfene Richtungen werden nicht mehr vorgeschlagen
   const verworfen = new Set(letzteAuftraege.filter(a => a.status === "fertig" && /^Verworfen/i.test(a.fortschritt || "")).map(a => a.thema));
-  $("richtungen").innerHTML = RICHTUNGEN.filter(r => !verworfen.has(r)).map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
+  const markenChips = RICHTUNGEN.filter(r => !verworfen.has(r)).map(r => `<button type="button" class="vchip" data-richtung="${esc(r)}">${esc(r)}</button>`).join("");
+  // Helium-Kategorien: legen eine Liste an, die du in Helium 10 füllst
+  const katChips = HELIUM_KATEGORIEN.map(k => `<button type="button" class="vchip" data-kategorie="${esc(k)}">Helium: ${esc(k)}</button>`).join("");
+  $("richtungen").innerHTML = markenChips + `<span class="note" style="width:100%;margin-top:6px">Helium-Liste anlegen (Kategorie wählen)</span>` + katChips;
 }
 
 async function befehlSenden(agent, aktion, thema, auftragId, wert){
@@ -945,7 +949,23 @@ async function loadAgenten(){
   }
 }
 
+// Helium-Kategorie: legt einen Auftrag an, der dich bittet, die Helium-Liste abzulegen
+async function heliumKategorie(kat){
+  const thema = `Helium-Liste: ${kat}`;
+  if (letzteAuftraege.some(a => a.thema === thema && a.status !== "fertig")) {
+    $("rHinweis").textContent = `„${thema}“ ist schon offen. Lege die Liste in buero/recherche ab.`;
+    return;
+  }
+  const frage = `Lege deine Helium-Liste für ${kat} in buero/recherche ab. Nimm die Vorlage helium-liste-VORLAGE.md, eine Zeile pro Produkt. Danach bewertet Nico alle Produkte und schickt dir die drei besten.`;
+  const { error } = await sb.from("recherche_auftraege").insert({ thema, status: "offen", wartet_auf: "corinna", fortschritt: frage, frage });
+  if (error) return showErr("Helium-Liste konnte nicht angelegt werden: " + error.message);
+  $("rHinweis").textContent = `„${thema}“ ist angelegt. Lege jetzt die Helium-Liste in buero/recherche ab.`;
+  loadAgenten();
+  loadAuftraege();
+}
 $("richtungen").addEventListener("click", async e => {
+  const k = e.target.closest("[data-kategorie]");
+  if (k) return heliumKategorie(k.dataset.kategorie);
   const b = e.target.closest("[data-richtung]");
   if (!b) return;
   const thema = b.dataset.richtung;
