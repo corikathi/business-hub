@@ -2095,7 +2095,9 @@ function ddPunkt(t){
 // ---------- Data-Dive-Export auswerten (gleiche Regeln wie nico/nische-check.mjs) ----------
 let ddZiel = null;
 const ddInput = document.createElement("input");
-ddInput.type = "file"; ddInput.accept = ".zip,.csv,.xlsx"; ddInput.multiple = true; ddInput.hidden = true;
+ddInput.type = "file"; ddInput.accept = ".zip,.csv,.xlsx,application/zip,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; ddInput.multiple = true;
+// Nicht mit display:none verstecken, sonst öffnet Safari auf dem iPhone die Dateiauswahl nicht zuverlässig
+ddInput.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
 document.body.appendChild(ddInput);
 $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   const pin = e.target.closest("[data-pin]");
