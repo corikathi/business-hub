@@ -166,9 +166,8 @@ button.nchip.late{border-color:var(--red)}
 .aufklapp summary::before{content:"▸ ";}
 .aufklapp[open] summary::before{content:"▾ ";}
 /* Nico-Karte: links Nico und die neue Recherche, rechts seine Aufträge */
-.nico-layout{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:20px;align-items:start}
+.nico-layout{display:grid;grid-template-columns:1fr;gap:0}
 .nico-rechts .auftrag{flex-wrap:wrap}
-.block[data-panel="nico"] > h2{display:none}
 @media (max-width:860px){ .nico-layout{grid-template-columns:1fr} }
 .nico-plan{margin-top:12px;display:grid;gap:10px}
 .plan-stufen{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -2081,11 +2080,8 @@ let nicoScreenPos = () => null;   // wird im 3D-Teil gesetzt
 function openNico(){
   nicoFokus(true);
   renderNicoKarte();
-  // Nach dem Zoom steht Nico in der Mitte des Bildes, dort öffnet das Fenster sofort
-  placeNicoDrawer();
+  // Nicos Fenster öffnet mittig wie alle anderen Bereiche
   openPanel("nico");
-  $("veil").classList.remove("on");
-  requestAnimationFrame(() => requestAnimationFrame(() => { $("drawer").style.transition = ""; }));
 }
 function placeNicoDrawer(){
   const r = $("scene").getBoundingClientRect();
@@ -2732,11 +2728,8 @@ $("navAvatar").innerHTML = pixFigure({...ASSIST_COLORS, H: "#c4622d", S: "#f2cfb
 const PANEL_KEYS = {"Fortschritt nach Phase":"fortschritt","Team":"team","Agenten":"agenten","Nico (Scout)":"nico","Aufgaben":"aufgaben","Produkte":"produkte","Gedächtnis":"wissen","Entscheidungen":"entscheidungen","Einstellungen":"einstellungen","Budget":"budget"};
 document.querySelectorAll(".drawer .block").forEach(b => { b.dataset.panel = PANEL_KEYS[b.querySelector("h2").textContent.trim()] || ""; });
 function openPanel(key){
-  // Nur Nicos Fenster steht neben ihm, alle anderen Bereiche wieder mittig
-  if (key !== "nico") {
-    const d = $("drawer");
-    d.style.width = ""; d.style.left = ""; d.style.top = ""; d.style.maxHeight = ""; d.style.transform = "";
-  }
+  const d = $("drawer");
+  d.style.width = ""; d.style.left = ""; d.style.top = ""; d.style.maxHeight = ""; d.style.transform = "";
   document.querySelectorAll(".drawer .block").forEach(b => b.classList.toggle("active", b.dataset.panel === key));
   const title = Object.keys(PANEL_KEYS).find(k => PANEL_KEYS[k] === key) || "";
   $("dTitle").textContent = title;
