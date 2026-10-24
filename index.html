@@ -939,11 +939,14 @@ let ideenKat = null, ideenPreis = "50–100 €";
 function renderIdeenGenerator(){
   const el = $("ideenGenerator");
   if (!el) return;
-  el.innerHTML = `<h3 class="phase">Ideen generieren</h3>
+  el.innerHTML = `<h3 class="phase">Produktideen generieren</h3>
+    <div class="note">Verkaufspreis Spanne</div>
     <div class="vlist">${IDEEN_PREISE.map(p => `<button type="button" class="vchip ${p === ideenPreis ? "on" : ""}" data-preis="${esc(p)}">${esc(p)}</button>`).join("")}</div>
-    <div class="vlist" style="margin-top:6px">${IDEEN_KATEGORIEN.map(k => `<button type="button" class="vchip ${k === ideenKat ? "on" : ""}" data-ideekat="${esc(k)}">${esc(k)}</button>`).join("")}</div>
-    <input id="ideenNotiz" placeholder="Hinweis, z. B. eher nachhaltig, kein Kinderprodukt" maxlength="160" style="margin-top:6px;width:100%">
-    <button type="button" id="ideenStart" style="margin-top:6px">Ideen generieren</button>
+    <div class="note" style="margin-top:8px">Kategorie</div>
+    <div class="vlist">${IDEEN_KATEGORIEN.map(k => `<button type="button" class="vchip ${k === ideenKat ? "on" : ""}" data-ideekat="${esc(k)}">${esc(k)}</button>`).join("")}</div>
+    <div class="note" style="margin-top:8px">Notizen oder Hinweise</div>
+    <input id="ideenNotiz" placeholder="z. B. Schließe bestimmte Produktgruppen aus oder suche gezielt danach" maxlength="160" style="margin-top:6px;width:100%">
+    <button type="button" id="ideenStart" style="margin-top:6px">Generiere Ideen</button>
     <div class="note" id="ideenHinweis"></div>`;
 }
 $("ideenGenerator") && $("ideenGenerator").addEventListener("click", async e => {
