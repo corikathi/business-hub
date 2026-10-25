@@ -260,6 +260,8 @@ button.nchip.late{border-color:var(--red)}
 .kopier{flex:none;padding:0 6px;min-width:26px;height:24px;font-size:13px;line-height:22px;border-radius:7px;background:transparent;border:1px solid var(--line);color:var(--muted);box-shadow:none;cursor:pointer;vertical-align:middle}
 .kopier:hover{color:var(--accent);border-color:var(--accent)}
 .kopier.ok{color:var(--ok);border-color:var(--ok)}
+.dd-sv-aendern{align-items:center;margin-top:8px}
+.dd-sv-aendern small{white-space:nowrap;color:var(--muted)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2098,9 +2100,9 @@ async function loadIdeen(){
         <div class="dd-seite"><h5 class="plus">Spricht dafür (${dafuer.length})</h5><div class="dd-kacheln">${dafuer.map(kachel).join("")}</div></div>` : "";
       const kaestchen = kz ? `<div class="dd-seite"><h5>Was für dich drin wäre</h5><div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(ddKurz(v || ""))}</b></div>`; }).join("")}</div></div>` : "";
       // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
-      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
+      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
-        + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
+        + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
     const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
     if (such) details = `<small class="idee-grund">Suchbegriff für Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
@@ -2109,7 +2111,7 @@ async function loadIdeen(){
         <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b><button type="button" class="kopier" data-kopie="${esc(i.text)}" title="Titel kopieren" aria-label="Titel kopieren">⧉</button></span>${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
-        ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
+        ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Data-Dive-Export hochladen"}</button>
           ${i.status === "wird geprüft"
@@ -2241,7 +2243,8 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   if (svKnopf) {
     const feld = el => el.dataset.svwert === svKnopf.dataset.sv;
     const input = [...document.querySelectorAll("[data-svwert]")].find(feld);
-    const sv = parseInt(String(input && input.value || "").replace(/D/g, ""), 10);
+    // Nur Ziffern: „38,102“ und „38.102“ werden zu 38102
+    const sv = parseInt(String(input && input.value || "").replace(/\D/g, ""), 10);
     if (!sv) { ddMeldung("Bitte eine Zahl eintragen, zum Beispiel 18003.", "fehler"); return; }
     const idee = (ideenCache || []).find(i => String(i.id) === svKnopf.dataset.sv);
     if (!idee) return;
