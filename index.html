@@ -2612,7 +2612,7 @@ function ddMeldung(text, art){
   const el = $("ddStatus");
   if (!el) return;
   // Steht die Meldung gerade nicht im Blick (z. B. im Bereich Produkte), kurz als Hinweisfenster zeigen
-  if (text && el.closest(".block") && !el.closest(".block").classList.contains("active")) setTimeout(() => alert(text), 0);
+  if (text && art && el.closest(".block") && !el.closest(".block").classList.contains("active")) setTimeout(() => alert(text), 0);
   el.textContent = text;
   el.className = "dd-status " + (art || "");
   el.hidden = !text;
