@@ -319,6 +319,10 @@ button.nchip.late{border-color:var(--red)}
 .vorcheck{font-size:12px;font-weight:700}
 .vorcheck.ok{color:var(--ok)}
 .vorcheck.nein{color:var(--muted)}
+.alle-teil{margin:0 0 12px}
+.alle-teil > h4{margin:0 0 6px;font-size:14px}
+.alle-teil.ok > h4{color:var(--ok)}
+.alle-teil.rest > summary{cursor:pointer;font-weight:800;color:var(--muted);padding:6px 0}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2227,7 +2231,8 @@ async function loadIdeen(){
     return;
   }
   if (ideenTab === "geprueft") { el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + `<div class="note">Grün und gelb zuerst. Rote Ideen sind unten eingeklappt.</div>` + (geprueft.length ? geprueft.filter(i => ampelRang(i) < 2).map(karte).join("") + (geprueft.some(i => ampelRang(i) === 2) ? `<details class="aufklapp unter rot-liste"><summary>Rot, aussortiert (${geprueft.filter(i => ampelRang(i) === 2).length})</summary>${geprueft.filter(i => ampelRang(i) === 2).map(karte).join("")}</details>` : "") : leer("Noch keine. Wenn du bei einer Idee „Fertig geprüft“ tippst, landet sie hier.")); return; }
-  el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + `<div class="note">Kategorien mit prüfenswerten Ideen oben (A bis Z), Kategorien ohne rutschen nach unten.</div>` + hochladen + [...gruppen].sort((a, b) => (a[1].some(i => rang(i) === 0) ? 0 : 1) - (b[1].some(i => rang(i) === 0) ? 0 : 1) || a[0].localeCompare(b[0], "de")).map(([kat, liste]) => {
+  // Gruppen nach Kategorie zeichnen (Kategorien mit prüfenswerten Ideen oben)
+  const zeichneGruppen = gruppenMap => [...gruppenMap].sort((a, b) => (a[1].some(i => rang(i) === 0) ? 0 : 1) - (b[1].some(i => rang(i) === 0) ? 0 : 1) || a[0].localeCompare(b[0], "de")).map(([kat, liste]) => {
     liste.sort((a, b) => a.text.localeCompare(b.text, "de"));
     const gut = liste.filter(i => rang(i) === 0), haken = liste.filter(i => rang(i) === 1), offen = liste.filter(i => rang(i) === 2 || rang(i) === 3), rot = liste.filter(i => rang(i) === 4);
     return `<details class="aufklapp ideen-gruppe" data-ideengruppe="${esc(kat)}" ${ideenOffen.has(kat) ? "open" : ""}>
@@ -2238,6 +2243,12 @@ async function loadIdeen(){
       ${unter("Rot nach Data Dive", rot)}
     </details>`;
   }).join("");
+  const teile2 = (pruef) => { const m = new Map(); for (const [k, liste] of gruppen) { const l = liste.filter(pruef); if (l.length) m.set(k, l); } return m; };
+  const bestanden = teile2(i => /Vorcheck: bestanden/.test(i.ergebnis || "")), rest = teile2(i => !/Vorcheck: bestanden/.test(i.ergebnis || ""));
+  const zahl = m => [...m.values()].reduce((s, l) => s + l.length, 0);
+  el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + hochladen
+    + `<div class="alle-teil ok"><h4>Vorcheck bestanden (${zahl(bestanden)})</h4>${zahl(bestanden) ? zeichneGruppen(bestanden) : leer("Noch keine. Nico prüft im Hintergrund.")}</div>`
+    + `<details class="alle-teil rest"><summary>Alle anderen Ideen (${zahl(rest)}): noch nicht vorgeprüft oder durchgefallen</summary>${zeichneGruppen(rest)}</details>`;
 }
 $("ideenBereich") && $("ideenBereich").addEventListener("submit", async e => {
   if (e.target.id !== "eigeneIdee") return;
@@ -2361,15 +2372,13 @@ function renderNaechste(){
   if (!el) return;
   const alle = ideenCache || [];
   const hatAmpel = i => /^Ampel /.test(i.ergebnis || "");
-  const offen = [
-    ...alle.filter(i => i.status === "wird geprüft" && !hatAmpel(i)).map(i => ({ i, was: "Xray und Schwarze Box" })),
-    ...alle.filter(i => i.status !== "wird geprüft" && !hatAmpel(i) && /^Prüfenswert/.test(i.grund || ""))
-      .sort((a, b) => (/Vorcheck: bestanden/.test(b.ergebnis || "") ? 1 : 0) - (/Vorcheck: bestanden/.test(a.ergebnis || "") ? 1 : 0) || String(b.created_at).localeCompare(String(a.created_at)))
-      .map(i => ({ i, was: /Vorcheck: bestanden/.test(i.ergebnis || "") ? "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" : "Xray und Schwarze Box (Vorcheck läuft noch)" })),
-  ];
+  // Nur Ideen, die den Vorcheck auf Amazon bestanden haben und noch keine Ampel haben
+  const offen = alle.filter(i => !hatAmpel(i) && /Vorcheck: bestanden/.test(i.ergebnis || ""))
+    .sort((a, b) => (b.status === "wird geprüft") - (a.status === "wird geprüft") || String(b.created_at).localeCompare(String(a.created_at)))
+    .map(i => ({ i, was: "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
   const gesehen = new Set();
   const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 5);
-  if (!liste.length) { el.innerHTML = ""; return; }
+  if (!liste.length) { el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4><small class="muted">Noch keine Idee hat den Vorcheck bestanden. Nico prüft im Hintergrund weiter und meldet sich auf Telegram, wenn er fertig ist.</small></div>`; return; }
   el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4>` + liste.map(({ i, was }) => {
     const begriff = ddSuchbegriff(i);
     return `<div class="naechste-zeile"><div><b>${esc(i.text)}</b><small>${esc(was)}</small></div>
