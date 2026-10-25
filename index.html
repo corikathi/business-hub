@@ -309,6 +309,7 @@ button.nchip.late{border-color:var(--red)}
 .naechste-zeile b{display:block;font-size:13px}
 .naechste-zeile small{color:var(--muted);font-size:11px}
 @media (max-width:600px){ .naechste-zeile{grid-template-columns:1fr auto} .naechste-zeile .dd-knopf{grid-column:1 / -1;justify-self:start} }
+.von-amazon{font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);white-space:nowrap}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2173,9 +2174,12 @@ async function loadIdeen(){
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + kacheln + bewKasten + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
-    const such = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
-    if (such && ampel && !ddOffen(i)) details = `<small class="idee-grund">Suchbegriff für Amazon und Helium 10: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>` + details;
-    else if (such && !ampel) details = `<small class="idee-grund">Suchbegriff für Amazon und Helium 10: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
+    const suchRoh = (/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1];
+    const suchSauber = suchRoh ? suchRoh.replace(/\s*\(Amazon-Vorschlag\)/, "").trim() : "";
+    const vonAmazon = suchRoh && /Amazon-Vorschlag/.test(suchRoh);
+    const suchZeile = suchSauber ? `<small class="idee-grund">Suchbegriff für Amazon und Helium 10: <b class="dd-such">${esc(suchSauber)}</b> <button type="button" class="kopier" data-kopie="${esc(suchSauber)}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button>${vonAmazon ? ` <span class="von-amazon" title="So schlägt Amazon die Suche beim Tippen vor">von Amazon</span>` : ""}</small>` : "";
+    if (suchZeile && ampel && !ddOffen(i)) details = suchZeile + details;
+    else if (suchZeile && !ampel) details = suchZeile;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
         <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${ddVorlaeufig(i) ? `<span class="sichtung" title="Mit Data Dive bewertet. Vor der Übernahme mit Helium 10 (Xray und Schwarze Box) nachprüfen.">Erste Sichtung</span>` : ""}${pille}</div>
@@ -2329,7 +2333,7 @@ function renderTop3(){
   if (!top.length) { el.innerHTML = ""; return; }
   el.innerHTML = `<div class="top3-block"><h4>Top 3 aus der Rangliste</h4><small>Die besten Ideen, die noch nicht in Produkte sind. Übernehmen machst du selbst.</small>` + top.map((i, n) => {
     const e = i.ergebnis || "", amp = (/^Ampel (\S+?)\./.exec(e) || [])[1], u = ddDeinUmsatz(i);
-    const such = (/Suchbegriff: ([^·|]+)/.exec(e) || [])[1];
+    const such = ((/Suchbegriff: ([^·|]+)/.exec(e) || [])[1] || "").replace(/\s*\(Amazon-Vorschlag\)/, "");
     const chance = (/ \| Chance: ([^|]*)/.exec(e) || [])[1];
     return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b>${ddVorlaeufig(i) ? `<span class="sichtung">Erste Sichtung</span>` : ""}<span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
@@ -2367,7 +2371,7 @@ function ddSuchbegriffAusTitel(t){
 }
 function ddSuchbegriff(i){
   const s = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
-  if (s) return s[1].trim();
+  if (s) return s[1].replace(/\s*\(Amazon-Vorschlag\)/, "").trim();
   return String(i.text || "").replace(/\s*\([^)]*\)/g, "").replace(/\s*\(Data Dive\)$/, "").toLowerCase().split(/[,–-]/)[0].trim().split(/\s+/).slice(0, 4).join(" ");
 }
 // Früher: Pflicht-Kasten „Niche Dive fehlt“. Jetzt reicht für die erste Sichtung die Suchliste, darum nie mehr offen
@@ -2788,7 +2792,7 @@ ddInput.addEventListener("change", async () => {
       : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP, die Competitors-Datei oder die Produktliste hoch.");
     const zielIdee = ddZiel !== "neu" ? (ideenCache || []).find(i => String(i.id) === String(ddZiel)) : null;
     const alterBegriff = zielIdee && /Suchbegriff: ([^·|]+)/.exec(zielIdee.ergebnis || "");
-    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text, alterBegriff && alterBegriff[1].trim());
+    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text, alterBegriff && alterBegriff[1].replace(/\s*\(Amazon-Vorschlag\)/, "").trim());
     if (alterBegriff) r.ergebnis += " | Suchbegriff: " + alterBegriff[1].trim();
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: ddOffen({ ergebnis: r.ergebnis }) ? "wird geprüft" : "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
