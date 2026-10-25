@@ -281,6 +281,9 @@ button.nchip.late{border-color:var(--red)}
 .rang-produkt{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);white-space:nowrap}
 .dd-knopf.dd-produkt{background:var(--ok);border-color:var(--ok);color:#0f1216;font-weight:800}
 @media (max-width:600px){ .rang-umsatz{display:none} }
+.dive-block{border:2px solid var(--warn);border-radius:12px;padding:10px 12px;margin:0 0 12px;background:rgba(245,194,107,.06)}
+.dive-block h4{margin:0 0 6px;font-size:14px;color:var(--warn)}
+.dive-block .note{margin:0 0 8px}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2092,11 +2095,14 @@ async function loadIdeen(){
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
   // „Prüfe ich gerade“ steht fest oben; neue Ideen schieben dort nichts weg
   const pruefe = data.filter(i => i.status === "wird geprüft").sort((a, b) => a.text.localeCompare(b.text, "de"));
-  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && !ddOffen(i);
+  // Nur aus einer Suchliste bewertet (oder Niche Dive fehlt): diese Ideen gehören nicht unter „Bereits geprüft“
+  const brauchtDive = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && (ddOffen(i) || /(^| \| )(Gezählt|Achtung)/.test(i.ergebnis || ""));
+  const dive = data.filter(brauchtDive).sort((a, b) => a.text.localeCompare(b.text, "de"));
+  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && !brauchtDive(i);
   const ampelRang = i => ({ "grün": 0, "gelb": 1, "rot": 2 })[(/^Ampel (grün|gelb|rot)/.exec(i.ergebnis || "") || [])[1]] ?? 3;
   const geprueft = data.filter(istGeprueft).sort((a, b) => ampelRang(a) - ampelRang(b) || a.text.localeCompare(b.text, "de"));
   const gruppen = new Map();
-  for (const i of data) { if (i.status === "wird geprüft" || istGeprueft(i)) continue; const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
+  for (const i of data) { if (i.status === "wird geprüft" || istGeprueft(i) || brauchtDive(i)) continue; const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
   if (ideenOffen === null) ideenOffen = new Set();
   const karte = i => {
     const ampel = /^Ampel (grün|gelb|rot)\. /.exec(i.ergebnis || "");
@@ -2150,7 +2156,8 @@ async function loadIdeen(){
     .map(([k, t, n]) => `<button type="button" class="ireiter ${ideenTab === k ? "on" : ""}" data-ireiter="${k}">${t} <span>${n}</span></button>`).join("");
   const leer = t => `<div class="muted" style="font-size:13px;padding:6px 0">${t}</div>`;
   const eigeneForm = `<form class="eigene-idee" id="eigeneIdee"><input id="eigeneIdeeText" maxlength="140" placeholder="Eigene Idee, z. B. Fahrradhalter aus Filz und Holz für die Wand" autocomplete="off"><button type="submit">Hinzufügen</button></form>`;
-  if (ideenTab === "pruefe") { el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + (pruefe.length ? pruefe.map(karte).join("") : leer("Noch nichts. Tippe bei einer Idee auf „Prüfe ich gerade“, dann steht sie hier.")); return; }
+  const diveBlock = dive.length ? `<div class="dive-block"><h4>Niche Dive nochmal hochladen (${dive.length})</h4><div class="note">Diese Ideen wurden nur aus einer Suchliste bewertet. Die Zahlen sind dadurch ungenau. Lade dafür den Niche Dive hoch.</div>${dive.map(karte).join("")}</div>` : "";
+  if (ideenTab === "pruefe") { el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + diveBlock + (pruefe.length ? pruefe.map(karte).join("") : leer("Noch nichts. Tippe bei einer Idee auf „Prüfe ich gerade“, dann steht sie hier.")); return; }
   if (ideenTab === "rang") {
     const zeile = (i, n) => {
       const p = ddPunktzahl(i), amp = (/^Ampel (\S+?)\./.exec(i.ergebnis) || [])[1], u = ddDeinUmsatz(i);
