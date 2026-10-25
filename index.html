@@ -316,6 +316,9 @@ button.nchip.late{border-color:var(--red)}
 .idee-kopf{padding-right:28px}
 .idee-x{position:absolute;top:8px;right:8px;width:24px;height:24px;padding:0;border-radius:50%;background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;line-height:22px;box-shadow:none;cursor:pointer}
 .idee-x:hover{color:var(--red);border-color:var(--red)}
+.vorcheck{font-size:12px;font-weight:700}
+.vorcheck.ok{color:var(--ok)}
+.vorcheck.nein{color:var(--muted)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2186,6 +2189,8 @@ async function loadIdeen(){
     const suchZeile = suchSauber ? `<small class="idee-grund">Suchbegriff für Amazon und Helium 10: <b class="dd-such">${esc(suchSauber)}</b> <button type="button" class="kopier" data-kopie="${esc(suchSauber)}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button>${vonAmazon ? ` <span class="von-amazon" title="So schlägt Amazon die Suche beim Tippen vor">von Amazon</span>` : ""}</small>` : "";
     if (suchZeile && ampel && !ddOffen(i)) details = suchZeile + details;
     else if (suchZeile && !ampel) details = suchZeile;
+    const vorcheck = !ampel && (/Vorcheck: ([^·|]+)/.exec(i.ergebnis || "") || [])[1];
+    if (vorcheck) details += `<small class="vorcheck ${/^bestanden/.test(vorcheck) ? "ok" : "nein"}">Vorcheck Amazon: ${esc(vorcheck.trim())}</small>`;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
         <div class="idee-kopf">${istProdukt(i) ? "" : `<button type="button" class="idee-x" data-weg="${esc(i.id)}" title="Idee verwerfen" aria-label="Idee verwerfen">✕</button>`}<span class="idee-titel"><b>${esc(i.text)}</b></span>${ddVorlaeufig(i) ? `<span class="sichtung" title="Mit Data Dive bewertet. Vor der Übernahme mit Helium 10 (Xray und Schwarze Box) nachprüfen.">Erste Sichtung</span>` : ""}${pille}</div>
@@ -2358,7 +2363,9 @@ function renderNaechste(){
   const hatAmpel = i => /^Ampel /.test(i.ergebnis || "");
   const offen = [
     ...alle.filter(i => i.status === "wird geprüft" && !hatAmpel(i)).map(i => ({ i, was: "Xray und Schwarze Box" })),
-    ...alle.filter(i => i.status !== "wird geprüft" && !hatAmpel(i) && /^Prüfenswert/.test(i.grund || "")).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).map(i => ({ i, was: "Xray und Schwarze Box" })),
+    ...alle.filter(i => i.status !== "wird geprüft" && !hatAmpel(i) && /^Prüfenswert/.test(i.grund || ""))
+      .sort((a, b) => (/Vorcheck: bestanden/.test(b.ergebnis || "") ? 1 : 0) - (/Vorcheck: bestanden/.test(a.ergebnis || "") ? 1 : 0) || String(b.created_at).localeCompare(String(a.created_at)))
+      .map(i => ({ i, was: /Vorcheck: bestanden/.test(i.ergebnis || "") ? "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" : "Xray und Schwarze Box (Vorcheck läuft noch)" })),
   ];
   const gesehen = new Set();
   const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 5);
