@@ -2178,13 +2178,13 @@ async function loadIdeen(){
     else if (such && !ampel) details = `<small class="idee-grund">Suchbegriff für Amazon und Helium 10: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
-        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${ddVorlaeufig(i) ? `<span class="sichtung" title="Nur aus der Suchliste bewertet. Vor der Übernahme brauchst du den Niche Dive.">Erste Sichtung</span>` : ""}${pille}</div>
+        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${ddVorlaeufig(i) ? `<span class="sichtung" title="Mit Data Dive bewertet. Vor der Übernahme mit Helium 10 (Xray und Schwarze Box) nachprüfen.">Erste Sichtung</span>` : ""}${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
         ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Helium 10 (Search Volume) eintragen:</small><div><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Export hochladen (Xray)"}</button>
-          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Niche Dive hochladen, dann übernehmen</button>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
+          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
           ${i.status === "wird geprüft"
             ? `<button type="button" class="ghost dd-knopf" data-pin="aus" data-id="${esc(i.id)}">Fertig geprüft</button>`
             : `<button type="button" class="ghost dd-knopf pin" data-pin="an" data-id="${esc(i.id)}">Prüfe ich gerade</button>`}
@@ -2334,7 +2334,7 @@ function renderTop3(){
     return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b>${ddVorlaeufig(i) ? `<span class="sichtung">Erste Sichtung</span>` : ""}<span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
       ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
-      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Niche Dive hochladen, dann übernehmen</button><small>Die Zahlen sind aus der Suchliste. Vor der Übernahme prüft der Niche Dive sie genau.</small>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
+      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
   }).join("") + "</div>";
 }
 // To-do: welche Suchbegriffe du als Nächstes in Helium 10 prüfst
@@ -2413,7 +2413,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   if (prod) {
     const idee = (ideenCache || []).find(x => String(x.id) === prod.dataset.produkt);
     if (!idee || istProdukt(idee)) return;
-    if (ddVorlaeufig(idee)) { ddMeldung("Für die Übernahme brauchst du zuerst den Niche Dive (ZIP). Lade ihn bei der Idee hoch.", "fehler"); return; }
+    if (ddVorlaeufig(idee)) { ddMeldung("Vor der Übernahme bitte mit Helium 10 nachprüfen: Xray und Schwarze Box bei der Idee hochladen.", "fehler"); return; }
     const e2 = idee.ergebnis || "";
     const hole = re => (re.exec(e2) || [])[1];
     const zahl = s => s ? parseFloat(String(s).replace(/\./g, "").replace(",", ".")) : null;
@@ -2808,7 +2808,7 @@ ddInput.addEventListener("change", async () => {
     const suchliste = /(^| \| )(Gezählt|Achtung)/.test(r.ergebnis);
     if (suchliste) {
       if (idee.status !== "wird geprüft") ideenTab = "geprueft";
-      ddMeldung(`Erste Sichtung für „${idee.text}“ gespeichert (${r.ergebnis.slice(6, 10).trim()}). Das reicht für die Rangliste. Den Niche Dive brauchst du erst, wenn du die Idee als Produkt übernehmen willst.`, "ok");
+      ddMeldung(`Erste Sichtung für „${idee.text}“ gespeichert (${r.ergebnis.slice(6, 10).trim()}). Das reicht für die Rangliste.`, "ok");
     } else if (ddOffen({ ergebnis: r.ergebnis })) {
       ddMeldung(`„${idee.text}“ gespeichert, aber das Suchvolumen fehlt noch. Trage es unter der Idee ein.`, "ok");
     } else if (idee.status === "wird geprüft") {
