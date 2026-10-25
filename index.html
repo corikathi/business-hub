@@ -288,6 +288,13 @@ button.nchip.late{border-color:var(--red)}
 .dd-chips{display:flex;flex-wrap:wrap;gap:6px}
 .dd-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:700}
 .dd-chip .kopier{height:22px;min-width:22px;line-height:20px}
+.top3-block{display:grid;gap:8px;padding:12px;border:1px solid var(--ok);border-radius:12px;margin:0 0 12px;background:rgba(111,224,176,.05)}
+.top3-block h4{margin:0;font-size:14px;color:var(--ok)}
+.top3-block > small{color:var(--muted)}
+.top3-karte{display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.top3-kopf{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.top3-kopf b{flex:1;min-width:0;font-size:14px}
+.top3-zahlen{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -743,6 +750,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
       <section class="block">
         <h2>Produkte</h2>
         <p class="note">Nur die Produkte, die den Trichter überstanden haben. Recherchen steuerst du bei Nico.</p>
+        <div id="top3"></div>
         <div id="products" style="margin-top:8px"></div>
         <label class="importbtn">Rechercheergebnis importieren (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
         <div class="note" id="importInfo"></div>
@@ -1219,6 +1227,7 @@ async function loadProducts(){
   if (error) return showProdErr("Produkte konnten nicht geladen werden: " + error.message);
   products = data || [];
   renderProducts();
+  renderTop3();
 }
 
 async function loadWissen(){
@@ -2088,12 +2097,13 @@ async function loadIdeen(){
   const fokus = document.activeElement;
   if (fokus && fokus.closest && fokus.closest("#ideenBereich") && fokus.tagName === "INPUT") return;
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
-  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(500);
+  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
   const el = $("ideenBereich");
   if (!el) return;
   const hochladen = `<div class="dd-leiste"><button type="button" class="ghost" data-dd="neu">Data-Dive-Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   ideenCache = data || [];
+  renderTop3();
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
   // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft, rot nach Data Dive
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
@@ -2274,6 +2284,23 @@ function ddPunktzahl(i){
   return Math.round(summe / max * 90) + bonus;
 }
 function ddDeinUmsatz(i){ const m = /Dein Umsatz \S+: realistisch etwa ([\d.]+) €/.exec(i.ergebnis || ""); return m ? parseInt(m[1].replace(/\./g, ""), 10) : 0; }
+// Top 3 aus der Rangliste, die noch nicht in Produkte übernommen sind (rote Ideen fallen raus)
+function renderTop3(){
+  const el = $("top3");
+  if (!el) return;
+  const top = (ideenCache || []).filter(i => ddPunktzahl(i) !== null && !istProdukt(i))
+    .sort((a, b) => ddPunktzahl(b) - ddPunktzahl(a) || ddDeinUmsatz(b) - ddDeinUmsatz(a)).slice(0, 3);
+  if (!top.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="top3-block"><h4>Top 3 aus der Rangliste</h4><small>Die besten Ideen, die noch nicht in Produkte sind. Übernehmen machst du selbst.</small>` + top.map((i, n) => {
+    const e = i.ergebnis || "", amp = (/^Ampel (\S+?)\./.exec(e) || [])[1], u = ddDeinUmsatz(i);
+    const such = (/Suchbegriff: ([^·|]+)/.exec(e) || [])[1];
+    const chance = (/ \| Chance: ([^|]*)/.exec(e) || [])[1];
+    return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b><span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
+      <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
+      ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
+      <div class="idee-knoepfe"><button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button></div></div>`;
+  }).join("") + "</div>";
+}
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
 // Noch nicht fertig: Suchvolumen fehlt, also wurde kein Niche Dive hochgeladen (rote Ideen brauchen keinen mehr)
 // Suchbegriff aus dem Ideentitel: die ersten bedeutungsvollen Wörter, ohne Klammern und Zusätze
