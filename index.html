@@ -305,11 +305,13 @@ button.nchip.late{border-color:var(--red)}
 .ablauf small{color:var(--muted)}
 .naechste{display:grid;gap:6px;border:1px solid var(--warn);border-radius:12px;padding:10px 12px;margin:0 0 12px;background:rgba(245,194,107,.05)}
 .naechste h4{margin:0;font-size:14px;color:var(--warn)}
-.naechste-zeile{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.naechste-zeile{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 .naechste-zeile b{display:block;font-size:13px}
 .naechste-zeile small{color:var(--muted);font-size:11px}
 @media (max-width:600px){ .naechste-zeile{grid-template-columns:1fr auto} .naechste-zeile .dd-knopf{grid-column:1 / -1;justify-self:start} }
 .von-amazon{font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);white-space:nowrap}
+.dd-knopf.verwerfen{color:var(--muted)}
+.dd-knopf.verwerfen:hover{color:var(--red);border-color:var(--red)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2192,6 +2194,7 @@ async function loadIdeen(){
           ${i.status === "wird geprüft"
             ? `<button type="button" class="ghost dd-knopf" data-pin="aus" data-id="${esc(i.id)}">Fertig geprüft</button>`
             : `<button type="button" class="ghost dd-knopf pin" data-pin="an" data-id="${esc(i.id)}">Prüfe ich gerade</button>`}
+          ${istProdukt(i) ? "" : `<button type="button" class="ghost dd-knopf verwerfen" data-weg="${esc(i.id)}">Verwerfen</button>`}
         </div>
       </div>`;
   };
@@ -2359,7 +2362,7 @@ function renderNaechste(){
     const begriff = ddSuchbegriff(i);
     return `<div class="naechste-zeile"><div><b>${esc(i.text)}</b><small>${esc(was)}</small></div>
       <span class="dd-chip">${esc(begriff)}<button type="button" class="kopier" data-kopie="${esc(begriff)}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></span>
-      <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">Hochladen</button></div>`;
+      <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">Hochladen</button><button type="button" class="ghost dd-knopf verwerfen" data-weg="${esc(i.id)}" title="Idee verwerfen">✕</button></div>`;
   }).join("") + "</div>";
 }
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
@@ -2522,6 +2525,32 @@ function suchvolumenNachtragen(idee, sv){
   el.addEventListener("toggle", () => { try { localStorage.setItem("ablaufZu", el.open ? "0" : "1"); } catch {} });
 })();
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
+// Idee verwerfen: Status „raus“, alter Stand wird gemerkt, damit „Rückgängig“ ihn zurückholt
+let ddLetzteVerworfen = null;
+async function ideeVerwerfen(id){
+  const idee = (ideenCache || []).find(x => String(x.id) === String(id));
+  if (!idee) return;
+  ddLetzteVerworfen = { id: idee.id, status: idee.status, grund: idee.grund };
+  const { error } = await sb.from("ideen").update({ status: "raus", grund: "Verworfen von dir" }).eq("id", idee.id);
+  if (error) { ddMeldung("Konnte nicht verworfen werden: " + error.message, "fehler"); return; }
+  const el = $("ddStatus");
+  if (el) {
+    el.innerHTML = `„${esc(idee.text)}“ ist verworfen. <button type="button" class="ghost dd-knopf" id="ddRueckgaengig">Rückgängig</button>`;
+    el.className = "dd-status ok"; el.hidden = false;
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  loadIdeen();
+}
+document.addEventListener("click", async e => {
+  const weg = e.target.closest("[data-weg]");
+  if (weg) { weg.disabled = true; return ideeVerwerfen(weg.dataset.weg); }
+  if (e.target.closest("#ddRueckgaengig") && ddLetzteVerworfen) {
+    const v = ddLetzteVerworfen; ddLetzteVerworfen = null;
+    const { error } = await sb.from("ideen").update({ status: v.status, grund: v.grund }).eq("id", v.id);
+    ddMeldung(error ? "Rückgängig hat nicht geklappt: " + error.message : "Die Idee ist wieder da.", error ? "fehler" : "ok");
+    loadIdeen();
+  }
+});
 function ddMeldung(text, art){
   const el = $("ddStatus");
   if (!el) return;
