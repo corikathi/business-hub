@@ -296,6 +296,13 @@ button.nchip.late{border-color:var(--red)}
 .top3-kopf b{flex:1;min-width:0;font-size:14px}
 .top3-zahlen{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
 .sichtung{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px dashed var(--warn);color:var(--warn);white-space:nowrap}
+.ablauf{border:1px solid var(--accent);border-radius:12px;padding:10px 14px;margin:0 0 12px;background:rgba(95,212,255,.05);font-size:13px;line-height:1.5}
+.ablauf > summary{cursor:pointer;font-weight:800;color:var(--accent);list-style:none}
+.ablauf > summary::-webkit-details-marker{display:none}
+.ablauf > summary::before{content:"▸ "}
+.ablauf[open] > summary::before{content:"▾ "}
+.ablauf ol{margin:8px 0 6px;padding-left:20px;display:grid;gap:5px}
+.ablauf small{color:var(--muted)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -808,6 +815,18 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
             </div>
             <div class="schritt s3">
               <div class="schritt-kopf"><span>3</span><div><b>Deine Ideen</b><small>Was Nico gefunden hat</small></div></div>
+              <details class="ablauf" id="ablaufHelium" open>
+                <summary>So prüfst du eine Idee mit Helium 10</summary>
+                <ol>
+                  <li><b>Idee wählen:</b> In der Liste unten eine grüne Idee nehmen und den <b>Suchbegriff</b> mit ⧉ kopieren. Eigene Ideen trägst du oben unter „Eigene Idee hinzufügen“ ein.</li>
+                  <li><b>Suchvolumen (Schwarze Box):</b> Reiter „Schlüsselwörter“, oben <b>amazon.de</b>. <b>Alle Filter leer</b>, nur den Begriff in die „Stichwortsuche“. Suche, dann <b>Export</b>.</li>
+                  <li><b>Konkurrenz (Xray):</b> Auf amazon.de den Begriff suchen, oben im Browser das Helium-Symbol, <b>Xray</b> öffnen, dann <b>Export</b>.</li>
+                  <li><b>Hochladen:</b> Bei der Idee auf „Export hochladen“ tippen und <b>beide Dateien zusammen</b> auswählen. Der Hub rechnet die Ampel.</li>
+                  <li><b>Ergebnis:</b> Grün und gelb landen in der <b>Rangliste</b>, die besten drei oben bei <b>Produkte</b>. Nico liest danach von selbst die Bewertungen.</li>
+                  <li><b>Übernehmen:</b> Überzeugt dich eine Idee, bei Produkte auf „Als Produkt übernehmen“. Dann geht es mit Hersteller und Kalkulation weiter.</li>
+                </ol>
+                <small>Neue Nischen ohne Nicos Ideen: In der Schwarzen Box die Filter setzen (Suchvolumen ab 5.000, Umsatz ab 10.000, Preis ab 50, Wortanzahl 2 bis 4) und „Filter speichern“.</small>
+              </details>
               <div id="ddStatus" class="dd-status" hidden></div>
               <div id="ideenBereich"></div>
             </div>
@@ -2452,6 +2471,13 @@ function suchvolumenNachtragen(idee, sv){
     : `Raus: Eher nicht, rot: ${namen.filter(n => farbe[n] === "rot").join(", ")}.`;
   return { ergebnis: `Ampel ${ampel}. ` + teile.join(" | "), grund };
 }
+// Anleitung „So prüfst du eine Idee“: zugeklappt bleiben, wenn du sie zugeklappt hast
+(() => {
+  const el = document.getElementById("ablaufHelium");
+  if (!el) return;
+  try { if (localStorage.getItem("ablaufZu") === "1") el.open = false; } catch {}
+  el.addEventListener("toggle", () => { try { localStorage.setItem("ablaufZu", el.open ? "0" : "1"); } catch {} });
+})();
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
 function ddMeldung(text, art){
   const el = $("ddStatus");
