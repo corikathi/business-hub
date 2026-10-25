@@ -262,6 +262,12 @@ button.nchip.late{border-color:var(--red)}
 .kopier.ok{color:var(--ok);border-color:var(--ok)}
 .dd-sv-aendern{align-items:center;margin-top:8px}
 .dd-sv-aendern small{white-space:nowrap;color:var(--muted)}
+.dd-bew{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--accent);border-radius:12px;background:rgba(95,212,255,.05);font-size:13px;line-height:1.45}
+.dd-bew > b{color:var(--accent);font-size:14px}
+.dd-bew ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.dd-bew p{margin:0}
+.dd-bew small{color:var(--muted)}
+.dd-bew a{color:var(--accent)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2092,7 +2098,8 @@ async function loadIdeen(){
       // Ampel-Punkte als farbige Kacheln: was dafür spricht und was dagegen
       const PUNKT = /^(Nachfrage|Dein Umsatz|Suchvolumen|Marke|Bewertungen|Preis|Neue Anbieter|Schwächen) (grün|gelb|rot|unbekannt):? ?(.*)$/;
       const punkte = teile.map(t => PUNKT.exec(t)).filter(Boolean).map(([, name, farbe, text]) => ({ name, farbe, text: ddKurz(text) }));
-      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen|Suchbegriff): /.test(t) && !PUNKT.test(t));
+      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen|Suchbegriff|Beschwerden|Chance|Gelesen|Hinweis Nico): /.test(t) && !PUNKT.test(t));
+      const bewKasten = ddBewertungen(i, teile);
       const kachel = p => `<div class="dd-kachel ${p.farbe}"><small>${esc(p.name)}</small><b>${esc(p.text)}</b></div>`;
       const dafuer = punkte.filter(p => p.farbe === "grün"), dagegen = punkte.filter(p => p.farbe === "rot" || p.farbe === "gelb" || p.farbe === "unbekannt")
         .sort((a, b) => ["rot", "gelb", "unbekannt"].indexOf(a.farbe) - ["rot", "gelb", "unbekannt"].indexOf(b.farbe));
@@ -2102,7 +2109,7 @@ async function loadIdeen(){
       // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
       const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
-        + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
+        + kacheln + bewKasten + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
     const such = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
     if (such && ampel && !ddOffen(i)) details = `<small class="idee-grund">Suchbegriff für Amazon und Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>` + details;
@@ -2189,6 +2196,29 @@ $("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
   if (g.open) ideenOffen.add(g.dataset.ideengruppe); else ideenOffen.delete(g.dataset.ideengruppe);
 }, true);
 
+// Die schwächsten starken Konkurrenten (ab 10.000 €, wenigste Sterne) aus der gespeicherten Liste
+function ddSchwache(i, n = 3){
+  const k = (/Konkurrenten: ([^|]*)/.exec(i.ergebnis || "") || [])[1] || "";
+  const liste = [...k.matchAll(/([^;]+?) \((B0[A-Z0-9]{8}), ([\d.]+) €, ([\d,]+) Sterne/g)]
+    .map(m => ({ marke: m[1].trim(), asin: m[2], umsatz: parseInt(m[3].replace(/\./g, ""), 10), sterne: parseFloat(m[4].replace(",", ".")) }));
+  const stark = liste.filter(p => p.umsatz >= 10000);
+  return (stark.length ? stark : liste).sort((a, b) => a.sterne - b.sterne || b.umsatz - a.umsatz).slice(0, n);
+}
+// Kasten „Was Käufer stört“: Ergebnis von Nico, Knopf zum Beauftragen und Links zu den kritischen Bewertungen
+function ddBewertungen(i, teile){
+  const ampel = (/^Ampel (grün|gelb|rot)/.exec(i.ergebnis || "") || [])[1];
+  if (!ampel || ampel === "rot") return "";
+  const hole = n => (teile.find(t => t.startsWith(n + ": ")) || "").slice(n.length + 2);
+  const beschwerden = hole("Beschwerden").split("; ").filter(Boolean), chance = hole("Chance"), hinweis = hole("Hinweis Nico");
+  const schwache = ddSchwache(i);
+  const links = schwache.map(p => `<a href="https://www.amazon.de/product-reviews/${p.asin}/?filterByStar=critical" target="_blank" rel="noopener">${esc(p.marke)} (${String(p.sterne).replace(".", ",")} ★)</a>`).join(" · ");
+  const selbst = links ? `<small>Weitere Bewertungen selbst lesen (nur die kritischen, du musst bei Amazon angemeldet sein): ${links}</small>` : "";
+  const laeuft = letzteAuftraege.some(a => a.status !== "fertig" && a.thema === "Bewertungen prüfen: " + i.text);
+  if (beschwerden.length) return `<div class="dd-bew"><b>Was Käufer stört (von Nico gelesen)</b><ul>${beschwerden.map(b => `<li>${esc(b)}</li>`).join("")}</ul>${chance ? `<p><b>Deine Chance:</b> ${esc(chance)}</p>` : ""}${hinweis ? `<small>${esc(hinweis)}</small>` : ""}${selbst}</div>`;
+  if (laeuft) return `<div class="dd-bew"><b>Nico liest gerade die Bewertungen</b><small>Das Ergebnis steht beim nächsten Lauf hier (Nico prüft alle 5 Minuten, wenn die Desktop-App offen ist).</small>${selbst}</div>`;
+  // Nico prüft grüne und gelbe Ideen von selbst, ohne Freigabe
+  return `<div class="dd-bew"><b>Nico liest die Bewertungen automatisch</b><small>Beim nächsten freien Lauf liest Nico die Bewertungen von ${esc(schwache.map(p => p.marke).join(", ") || "den Top-Anbietern")} und schreibt hier auf, was Käufer stört. Du musst nichts tun.</small>${selbst}</div>`;
+}
 // Noch nicht fertig: Suchvolumen fehlt, also wurde kein Niche Dive hochgeladen (rote Ideen brauchen keinen mehr)
 function ddSuchbegriff(i){
   const s = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
@@ -2231,6 +2261,21 @@ ddInput.type = "file"; ddInput.accept = ".zip,.csv,.xlsx,application/zip,text/cs
 ddInput.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
 document.body.appendChild(ddInput);
 $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
+  const bew = e.target.closest("[data-bew]");
+  if (bew) {
+    const idee = (ideenCache || []).find(x => String(x.id) === bew.dataset.bew);
+    if (!idee) return;
+    const thema = "Bewertungen prüfen: " + idee.text;
+    if (letzteAuftraege.some(a => a.status !== "fertig" && a.thema === thema)) { ddMeldung("Nico hat diesen Auftrag schon.", "ok"); return; }
+    const schwache = ddSchwache(idee);
+    bew.disabled = true;
+    const { error } = await sb.from("recherche_auftraege").insert({ thema, status: "offen", wartet_auf: "nico",
+      fortschritt: `Idee ${idee.id}. Bewertungen lesen von: ${schwache.map(p => p.marke + " " + p.asin).join(", ")}` });
+    if (error) { ddMeldung("Auftrag konnte nicht angelegt werden: " + error.message, "fehler"); bew.disabled = false; return; }
+    ddMeldung(`Nico liest die Bewertungen von ${schwache.map(p => p.marke).join(", ")}. Das Ergebnis steht danach bei der Idee.`, "ok");
+    await loadAuftraege();
+    return loadIdeen();
+  }
   const kopie = e.target.closest("[data-kopie]");
   if (kopie) {
     const text = kopie.dataset.kopie;
