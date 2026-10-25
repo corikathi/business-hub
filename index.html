@@ -2276,6 +2276,11 @@ function ddPunktzahl(i){
 function ddDeinUmsatz(i){ const m = /Dein Umsatz \S+: realistisch etwa ([\d.]+) €/.exec(i.ergebnis || ""); return m ? parseInt(m[1].replace(/\./g, ""), 10) : 0; }
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
 // Noch nicht fertig: Suchvolumen fehlt, also wurde kein Niche Dive hochgeladen (rote Ideen brauchen keinen mehr)
+// Suchbegriff aus dem Ideentitel: die ersten bedeutungsvollen Wörter, ohne Klammern und Zusätze
+function ddSuchbegriffAusTitel(t){
+  const kern = String(t || "").replace(/\([^)]*\)/g, " ").split(/[,;–—]/)[0].replace(/\b(fürs?|für|mit|aus|und|oder|zum|zur|im|in|den|dem|der|die|das|ein|eine|von|auf|ohne|premium|geschenk|design|ideal)\b/gi, " ");
+  return kern.toLowerCase().replace(/[^a-zäöüß0-9 ]+/g, " ").split(/\s+/).filter(w => w.length > 2).slice(0, 3).join(" ");
+}
 function ddSuchbegriff(i){
   const s = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
   if (s) return s[1].trim();
@@ -2578,7 +2583,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
       (mitSchwaeche.length ? ` (${mitSchwaeche.slice(0, 6).map(p => p.marke + (p.sterne <= 4.2 ? " " + komma(p.sterne) + " Sterne" : "") + (p.bilder != null && p.bilder < 7 ? " nur " + p.bilder + " Bilder" : "")).join(", ")})` : "")
       + (starke.length && starke.every(p => p.bilder == null) ? ". Bilder prüfst du selbst in den Links (der Dive-Export zählt sie nicht)" : ""),
     schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + komma(p.sterne)).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
-    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${p.sterne == null ? "ohne Sterne" : komma(p.sterne) + " Sterne"}${p.bilder != null ? ", " + p.bilder + " Bilder" : ""})`).join("; "),
+    "Konkurrenten: " + [...produkte].filter(p => p.umsatz > 0).sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${p.sterne == null ? "ohne Sterne" : komma(p.sterne) + " Sterne"}${p.bilder != null ? ", " + p.bilder + " Bilder" : ""})`).join("; "),
   ];
   // Die Produktliste kennt die Amazon-Gebühr pro Stück, das hilft bei der Rechnung
   const medGebuehr = median(produkte.map(p => p.gebuehr ?? null));
