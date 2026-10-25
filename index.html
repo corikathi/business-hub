@@ -2248,7 +2248,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("submit", async e => {
   const { error } = await sb.from("ideen").insert({ text, richtung: "Eigene Ideen", status: "wird geprüft", grund: "Eigene Idee, noch nicht geprüft" });
   if (error) { ddMeldung("Konnte nicht gespeichert werden: " + error.message, "fehler"); return; }
   feld.value = "";
-  ddMeldung(`„${text}“ ist angelegt und steht unter „Prüfe ich gerade“. Nächster Schritt: Niche Dive in Data Dive, dann ZIP hier hochladen.`, "ok");
+  ddMeldung(`„${text}“ ist angelegt und steht unter „Prüfe ich gerade“. Nächster Schritt: in Helium 10 Schwarze Box und Xray exportieren, dann hier hochladen.`, "ok");
   ideenTab = "pruefe";
   loadIdeen();
 });
@@ -2387,7 +2387,7 @@ function ddKurz(t){
     .replace(/realistisch etwa /, "ca. ")
     .replace(/^(?:„[^“]*“ )?wird (.*)-mal im Monat gesucht$/, "$1 Suchen / Monat")
     .replace(/^(?:„[^“]*“ )?wird (.*)-mal \/ Monat gesucht$/, "$1 Suchen / Monat")
-    .replace(/: lade die Keyword-Datei mit hoch|^lade die Keyword-Datei mit hoch$/, "fehlt, Niche Dive machen")
+    .replace(/: lade die Keyword-Datei mit hoch|^lade die Keyword-Datei mit hoch$/, "fehlt, Schwarze Box exportieren")
     .trim();
 }
 // Ein Punkt der Data-Dive-Auswertung; die Konkurrenten werden zu Amazon-Links
@@ -2612,7 +2612,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
         filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern, die zur Nische gehören (Wörter: ${kern.join(", ")}). ${produkte.length - passend.length} andere Produkte sind raus`;
         produkte = passend;
       } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer gehören zur Nische`;
-      else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen. Die Zahlen sind unsicher, mach einen Niche Dive`;
+      else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen. Die Zahlen sind unsicher, prüf den Suchbegriff mit Helium 10`;
     }
   }
   if (variantenInfo) filterInfo = filterInfo ? filterInfo + ". " + variantenInfo : variantenInfo;
