@@ -219,10 +219,19 @@ button.nchip.late{border-color:var(--red)}
 .dd-links{margin:2px 0 0;padding-left:18px;display:grid;gap:2px}
 .dd-fazit{display:grid;gap:6px;font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;background:rgba(95,212,255,.06);border-left:3px solid var(--accent)}
 .dd-fazit p{margin:0}
-.dd-kz{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}
-.dd-kz div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:grid;gap:1px}
-.dd-kz small{font-size:11px;color:var(--muted)}
-.dd-kz b{font-size:13px}
+.dd-seite{display:grid;gap:6px;margin-top:4px}
+.dd-seite h5{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.dd-seite h5.plus{color:var(--ok)}
+.dd-seite h5.minus{color:var(--warn)}
+.dd-kz,.dd-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:8px}
+.dd-kz div,.dd-kachel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:4px;align-content:start}
+.dd-kz small,.dd-kachel small{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.dd-kz b,.dd-kachel b{font-size:14px;line-height:1.3}
+.dd-kachel.grün{border-color:var(--ok);background:rgba(111,224,176,.07)}
+.dd-kachel.gelb{border-color:var(--warn);background:rgba(245,194,107,.07)}
+.dd-kachel.rot{border-color:var(--red);background:rgba(255,122,122,.08)}
+.dd-kachel.unbekannt{border-style:dashed}
+.idee-zeile:has(.dd-seite){gap:10px;padding:14px 16px}
 .dd-fazit b{color:var(--accent)}
 .dd-such{color:var(--ink);user-select:all}
 .ireiter-leiste{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
@@ -237,6 +246,13 @@ button.nchip.late{border-color:var(--red)}
 .dd-nachtrag small{font-size:12px;color:var(--warn)}
 .dd-nachtrag div{display:flex;gap:6px}
 .dd-nachtrag input{flex:1;min-width:0;padding:5px 8px;font-size:13px}
+.dd-offen{display:grid;gap:8px;padding:12px 14px;border:2px solid var(--warn);border-radius:12px;background:rgba(245,194,107,.08);font-size:13px;line-height:1.45}
+.dd-offen > b{color:var(--warn);font-size:14px}
+.dd-offen ol{margin:0;padding-left:20px;display:grid;gap:4px}
+.dd-offen small{color:var(--muted)}
+.dd-sv{display:flex;gap:6px}
+.dd-sv input{flex:1;min-width:0;padding:5px 8px;font-size:13px}
+.dd-knopf.dd-haupt{background:var(--warn);border-color:var(--warn);color:#0f1216;font-weight:800;padding:7px 14px;font-size:13px}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2048,7 +2064,7 @@ async function loadIdeen(){
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
   // „Prüfe ich gerade“ steht fest oben; neue Ideen schieben dort nichts weg
   const pruefe = data.filter(i => i.status === "wird geprüft").sort((a, b) => a.text.localeCompare(b.text, "de"));
-  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "");
+  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && !ddOffen(i);
   const ampelRang = i => ({ "grün": 0, "gelb": 1, "rot": 2 })[(/^Ampel (grün|gelb|rot)/.exec(i.ergebnis || "") || [])[1]] ?? 3;
   const geprueft = data.filter(istGeprueft).sort((a, b) => ampelRang(a) - ampelRang(b) || a.text.localeCompare(b.text, "de"));
   const gruppen = new Map();
@@ -2064,11 +2080,20 @@ async function loadIdeen(){
       const teile = rest.includes(" | ") ? rest.split(" | ") : rest.split(/\. (?=[A-ZÄÖÜ])/);
       const kz = teile.find(t => /^Kennzahlen: /.test(t));
       const oben = teile.filter(t => /^(Möglich|Nächster Schritt): /.test(t));
-      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen): /.test(t));
-      const kaestchen = kz ? `<div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(v || "")}</b></div>`; }).join("")}</div>` : "";
+      // Ampel-Punkte als farbige Kacheln: was dafür spricht und was dagegen
+      const PUNKT = /^(Nachfrage|Dein Umsatz|Suchvolumen|Marke|Bewertungen|Preis|Neue Anbieter|Schwächen) (grün|gelb|rot|unbekannt):? ?(.*)$/;
+      const punkte = teile.map(t => PUNKT.exec(t)).filter(Boolean).map(([, name, farbe, text]) => ({ name, farbe, text: ddKurz(text) }));
+      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen): /.test(t) && !PUNKT.test(t));
+      const kachel = p => `<div class="dd-kachel ${p.farbe}"><small>${esc(p.name)}</small><b>${esc(p.text)}</b></div>`;
+      const dafuer = punkte.filter(p => p.farbe === "grün"), dagegen = punkte.filter(p => p.farbe === "rot" || p.farbe === "gelb" || p.farbe === "unbekannt")
+        .sort((a, b) => ["rot", "gelb", "unbekannt"].indexOf(a.farbe) - ["rot", "gelb", "unbekannt"].indexOf(b.farbe));
+      const kacheln = punkte.length ? `<div class="dd-seite"><h5 class="minus">Spricht dagegen (${dagegen.length})</h5><div class="dd-kacheln">${dagegen.length ? dagegen.map(kachel).join("") : `<div class="muted" style="font-size:12px">Nichts.</div>`}</div></div>
+        <div class="dd-seite"><h5 class="plus">Spricht dafür (${dafuer.length})</h5><div class="dd-kacheln">${dafuer.map(kachel).join("")}</div></div>` : "";
+      const kaestchen = kz ? `<div class="dd-seite"><h5>Was für dich drin wäre</h5><div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(ddKurz(v || ""))}</b></div>`; }).join("")}</div></div>` : "";
       // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
-      details = (oben.length ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
-        + `<details class="aufklapp unter"><summary>Zahlen im Detail und Konkurrenten</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
+      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
+      details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
+        + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
     }
     const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
     if (such) details = `<small class="idee-grund">Suchbegriff für Data Dive: <b class="dd-such">${esc(such[1].trim())}</b></small>`;
@@ -2077,7 +2102,7 @@ async function loadIdeen(){
         <div class="idee-kopf"><b>${esc(i.text)}</b>${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
-        ${ampel && /Suchvolumen unbekannt/.test(i.ergebnis) ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
+        ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Data-Dive-Export hochladen"}</button>
           ${i.status === "wird geprüft"
@@ -2112,6 +2137,29 @@ $("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
   if (g.open) ideenOffen.add(g.dataset.ideengruppe); else ideenOffen.delete(g.dataset.ideengruppe);
 }, true);
 
+// Noch nicht fertig: Suchvolumen fehlt, also wurde kein Niche Dive hochgeladen (rote Ideen brauchen keinen mehr)
+function ddSuchbegriff(i){
+  const s = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
+  if (s) return s[1].trim();
+  return String(i.text || "").replace(/\s*\([^)]*\)/g, "").replace(/\s*\(Data Dive\)$/, "").toLowerCase().split(/[,–-]/)[0].trim().split(/s+/).slice(0, 4).join(" ");
+}
+function ddOffen(i){ return /^Ampel (grün|gelb)/.test(i.ergebnis || "") && /Suchvolumen unbekannt/.test(i.ergebnis || ""); }
+// Kurze Texte für Kacheln: Klammern, Nebensätze und lange Wendungen weg
+function ddKurz(t){
+  return String(t || "")
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\. .*$/, "")
+    .replace(/, Mittel der Nische.*$/, "")
+    .replace(/mit mindestens 10\.000 €\/Monat/g, "mit 10.000 € +")
+    .replace(/mindestens 10\.000 €\/Monat/g, "10.000 € +")
+    .replace(/über 10\.000 €\/Monat/g, "10.000 € +")
+    .replace(/ im Monat/g, " / Monat")
+    .replace(/realistisch etwa /, "ca. ")
+    .replace(/^(?:„[^“]*“ )?wird (.*)-mal im Monat gesucht$/, "$1 Suchen / Monat")
+    .replace(/^(?:„[^“]*“ )?wird (.*)-mal \/ Monat gesucht$/, "$1 Suchen / Monat")
+    .replace(/: lade die Keyword-Datei mit hoch|^lade die Keyword-Datei mit hoch$/, "fehlt, Niche Dive machen")
+    .trim();
+}
 // Ein Punkt der Data-Dive-Auswertung; die Konkurrenten werden zu Amazon-Links
 function ddPunkt(t){
   t = t.replace(/\.$/, "");
@@ -2388,9 +2436,14 @@ ddInput.addEventListener("change", async () => {
     const zielIdee = ddZiel !== "neu" ? (ideenCache || []).find(i => String(i.id) === String(ddZiel)) : null;
     const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text);
     const { data: gespeichert, error } = ddZiel === "neu"
-      ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
+      ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: ddOffen({ ergebnis: r.ergebnis }) ? "wird geprüft" : "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
       : await sb.from("ideen").update({ ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
     if (ddZiel !== "neu") await sb.from("ideen").update({ status: "bewertet" }).eq("id", ddZiel).eq("status", "neu");
+    if (ddOffen({ ergebnis: r.ergebnis })) {
+      const nr = ddZiel === "neu" ? null : ddZiel;
+      if (nr) await sb.from("ideen").update({ status: "wird geprüft" }).eq("id", nr);
+      ideenTab = "pruefe";
+    }
     if (error) throw new Error(error.message);
     if (!gespeichert || !gespeichert.length) throw new Error("Die Idee wurde nicht gefunden. Bitte Seite neu laden und noch einmal versuchen.");
     const idee = gespeichert[0];
