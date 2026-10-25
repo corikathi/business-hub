@@ -284,6 +284,10 @@ button.nchip.late{border-color:var(--red)}
 .dive-block{border:2px solid var(--warn);border-radius:12px;padding:10px 12px;margin:0 0 12px;background:rgba(245,194,107,.06)}
 .dive-block h4{margin:0 0 6px;font-size:14px;color:var(--warn)}
 .dive-block .note{margin:0 0 8px}
+.dd-vorschl{display:grid;gap:6px}
+.dd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.dd-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:700}
+.dd-chip .kopier{height:22px;min-width:22px;line-height:20px}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2117,7 +2121,7 @@ async function loadIdeen(){
       // Ampel-Punkte als farbige Kacheln: was dafür spricht und was dagegen
       const PUNKT = /^(Nachfrage|Dein Umsatz|Suchvolumen|Marke|Bewertungen|Preis|Neue Anbieter|Schwächen) (grün|gelb|rot|unbekannt):? ?(.*)$/;
       const punkte = teile.map(t => PUNKT.exec(t)).filter(Boolean).map(([, name, farbe, text]) => ({ name, farbe, text: ddKurz(text) }));
-      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen|Suchbegriff|Beschwerden|Chance|Gelesen|Hinweis Nico): /.test(t) && !PUNKT.test(t));
+      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen|Suchbegriff|Vorschläge|Beschwerden|Chance|Gelesen|Hinweis Nico): /.test(t) && !PUNKT.test(t));
       const bewKasten = ddBewertungen(i, teile);
       const kachel = p => `<div class="dd-kachel ${p.farbe}"><small>${esc(p.name)}</small><b>${esc(p.text)}</b></div>`;
       const dafuer = punkte.filter(p => p.farbe === "grün"), dagegen = punkte.filter(p => p.farbe === "rot" || p.farbe === "gelb" || p.farbe === "unbekannt")
@@ -2126,7 +2130,10 @@ async function loadIdeen(){
         <div class="dd-seite"><h5 class="plus">Spricht dafür (${dafuer.length})</h5><div class="dd-kacheln">${dafuer.map(kachel).join("")}</div></div>` : "";
       const kaestchen = kz ? `<div class="dd-seite"><h5>Was für dich drin wäre</h5><div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(ddKurz(v || ""))}</b></div>`; }).join("")}</div></div>` : "";
       // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
-      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
+      const vorschlTeil = teile.find(t => /^Vorschläge: /.test(t));
+      const vorschl = vorschlTeil ? vorschlTeil.replace(/^Vorschläge: /, "").split("; ").filter(Boolean) : [];
+      const vorschlHtml = vorschl.length ? `<div class="dd-vorschl"><small>Mögliche Suchbegriffe aus den Titeln (zum Ausprobieren in Data Dive):</small><div class="dd-chips">${vorschl.map(v => `<span class="dd-chip">${esc(v)}<button type="button" class="kopier" data-kopie="${esc(v)}" title="Kopieren" aria-label="Kopieren">⧉</button></span>`).join("")}</div></div>` : "";
+      const offenKasten = ddOffen(i) ? `<div class="dd-offen">${vorschlHtml}<b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + kacheln + bewKasten + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
@@ -2608,7 +2615,30 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
   const schwachText = schwach.length ? schwach.slice(0, 2).map(p => `${p.marke} (${String(p.sterne).replace(".", ",")} ★)`).join(" und ") : "die Top 3";
   const naechster = ampel === "rot" ? "Nächster Schritt: nächste Idee nehmen."
     : `Nächster Schritt: Schlechte Bewertungen von ${schwachText} lesen. Kommt eine Beschwerde immer wieder, die du lösen kannst? Dann Hersteller anfragen.`;
-  const ergebnis = `Ampel ${ampel}. ` + [kennzahlen, naechster, filterInfo, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
+  // Suchbegriff-Vorschläge: die häufigsten Wortpaare aus den Titeln, ohne Füllwörter und Markennamen
+  const vorschlaege = (() => {
+    if (!listText || compText) return "";
+    const fuell = new Set(["mit", "für", "fuer", "und", "oder", "aus", "der", "die", "das", "den", "dem", "ein", "eine", "einer", "von", "zum", "zur", "im", "in", "auf", "set", "stück", "stk", "original", "premium", "neu", "professionell", "geschenk", "inkl", "inklusive", "zwei", "drei", "groß", "große", "klein", "kleine", "cm", "mm", "kg", "liter", "pack", "packung", "farbe", "farben", "weiß", "schwarz", "grau", "braun", "blau", "grün", "rot", "beige", "bambus", "holz", "unisex", "damen", "herren", "kinder", "jahre", "bis", "mehr", "sehr", "gut", "hoch", "einstellbar", "verstellbar", "als", "geeignet", "ideal", "perfekt", "eine", "einen", "tasche"]);
+    const brands = new Set(produkte.map(p => String(p.marke || "").toLowerCase().replace(/[^a-zäöüß0-9]/g, "")).filter(x => x.length > 2));
+    const zaehl = new Map();
+    for (const p of produkte) {
+      // Umlaute bleiben erhalten, damit die Vorschläge zum Kopieren stimmen. Ziffern und Füllwörter fliegen raus
+      const woerter = String(p.titel || "").toLowerCase().replace(/[^a-zäöüß ]+/g, " ").split(/\s+/)
+        .filter(w => w.length > 2 && !fuell.has(w) && !brands.has(w) && !/(als|geeignet|ideal|perfekt|eine|einen)$/.test(w));
+      const gesehen = new Set();
+      for (let i = 0; i < woerter.length - 1; i++) {
+        for (const n of [2, 3]) {
+          if (i + n > woerter.length) continue;
+          const k = woerter.slice(i, i + n).join(" ");
+          if (!gesehen.has(k)) { gesehen.add(k); zaehl.set(k, (zaehl.get(k) || 0) + 1); }
+        }
+      }
+    }
+    // Nur Wortfolgen, die in mindestens 3 Titeln stehen; Dreiwörter bevorzugt, weil genauer
+    const liste = [...zaehl].filter(([, n]) => n >= 3).sort((a, b) => (b[0].split(" ").length - a[0].split(" ").length) || b[1] - a[1]).slice(0, 5).map(([k]) => k);
+    return liste.length ? "Vorschläge: " + liste.join("; ") : "";
+  })();
+  const ergebnis = `Ampel ${ampel}. ` + [kennzahlen, naechster, filterInfo, vorschlaege, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
   const grund = (ampel === "grün" ? "Prüfenswert: " : ampel === "gelb" ? "Mit Haken: " : "Raus: ") + fazit;
   return { name, ergebnis, grund };
 }
