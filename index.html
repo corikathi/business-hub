@@ -256,6 +256,10 @@ button.nchip.late{border-color:var(--red)}
 .eigene-idee{display:flex;gap:6px;margin:0 0 12px}
 .eigene-idee input{flex:1;min-width:0;padding:7px 10px;font-size:13px}
 .eigene-idee button{padding:7px 14px;font-size:13px}
+.idee-titel{display:flex;align-items:flex-start;gap:6px;min-width:0}
+.kopier{flex:none;padding:0 6px;min-width:26px;height:24px;font-size:13px;line-height:22px;border-radius:7px;background:transparent;border:1px solid var(--line);color:var(--muted);box-shadow:none;cursor:pointer;vertical-align:middle}
+.kopier:hover{color:var(--accent);border-color:var(--accent)}
+.kopier.ok{color:var(--ok);border-color:var(--ok)}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2094,15 +2098,15 @@ async function loadIdeen(){
         <div class="dd-seite"><h5 class="plus">Spricht dafür (${dafuer.length})</h5><div class="dd-kacheln">${dafuer.map(kachel).join("")}</div></div>` : "";
       const kaestchen = kz ? `<div class="dd-seite"><h5>Was für dich drin wäre</h5><div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(ddKurz(v || ""))}</b></div>`; }).join("")}</div></div>` : "";
       // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
-      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
+      const offenKasten = ddOffen(i) ? `<div class="dd-offen"><b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
     }
     const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
-    if (such) details = `<small class="idee-grund">Suchbegriff für Data Dive: <b class="dd-such">${esc(such[1].trim())}</b></small>`;
+    if (such) details = `<small class="idee-grund">Suchbegriff für Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
-        <div class="idee-kopf"><b>${esc(i.text)}</b>${pille}</div>
+        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b><button type="button" class="kopier" data-kopie="${esc(i.text)}" title="Titel kopieren" aria-label="Titel kopieren">⧉</button></span>${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
         ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
@@ -2224,6 +2228,15 @@ ddInput.type = "file"; ddInput.accept = ".zip,.csv,.xlsx,application/zip,text/cs
 ddInput.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
 document.body.appendChild(ddInput);
 $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
+  const kopie = e.target.closest("[data-kopie]");
+  if (kopie) {
+    const text = kopie.dataset.kopie;
+    try { await navigator.clipboard.writeText(text); }
+    catch { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+    kopie.textContent = "✓"; kopie.classList.add("ok");
+    setTimeout(() => { kopie.textContent = "⧉"; kopie.classList.remove("ok"); }, 1500);
+    return;
+  }
   const svKnopf = e.target.closest("[data-sv]");
   if (svKnopf) {
     const feld = el => el.dataset.svwert === svKnopf.dataset.sv;
@@ -2391,10 +2404,11 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
   const p6 = mitSchwaeche.length >= 2 ? "grün" : mitSchwaeche.length === 1 ? "gelb" : "rot";
   // Suchvolumen nach eCommerce.de: ab 5.000 grün, 1.000 bis 5.000 typisch für genaue Nischen, darunter zu wenig
   const p7 = topSV ? (topSV >= 5000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
-  // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
-  // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
+  // Möglicher Umsatz: was das Mittelfeld der Top 15 schafft (Platz 6 bis 10), ist für eine neue Marke realistisch
   const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
-  const mittelfeld = sortiert.slice(Math.floor(sortiert.length / 3), Math.ceil(sortiert.length * 2 / 3)).map(p => p.umsatz).filter(u => u > 0);
+  // Immer die Top 15 nehmen (wie im Niche Dive), sonst ziehen die vielen Kleinstanbieter einer Suchliste den Wert nach unten
+  const top15 = sortiert.slice(0, 15);
+  const mittelfeld = top15.slice(Math.floor(top15.length / 3), Math.ceil(top15.length * 2 / 3)).map(p => p.umsatz).filter(u => u > 0);
   const von = Math.min(...mittelfeld), bis = Math.max(...mittelfeld);
   // Dein Umsatz (Corinna: unter 10.000 € im Monat ist zu wenig): Mitte der realistischen Spanne
   const deinUmsatz = mittelfeld.length ? (von + bis) / 2 : 0;
