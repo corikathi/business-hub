@@ -2656,7 +2656,16 @@ ddInput.addEventListener("change", async () => {
     const idee = gespeichert[0];
     // Die Kategorie der Idee aufklappen, damit du das Ergebnis gleich siehst
     if (ideenOffen) ideenOffen.add(idee.richtung || "Ohne Kategorie");
-    ddMeldung(`Fertig: „${idee.text}“ ist ausgewertet, ${r.ergebnis.split(".")[0]}. Das Ergebnis steht bei der Idee.`, "ok");
+    // Sagen, wo die Idee jetzt steht, damit sie nicht verschwindet
+    const suchliste = /(^| | )(Gezählt|Achtung)/.test(r.ergebnis);
+    if (suchliste) {
+      ddMeldung(`„${idee.text}“ ist wieder nur eine Suchliste. Sie bleibt im Block „Niche Dive nochmal hochladen“, bis du den Niche Dive mit dem Suchbegriff hochlädst.`, "fehler");
+    } else if (ddOffen({ ergebnis: r.ergebnis })) {
+      ddMeldung(`„${idee.text}“ gespeichert, aber das Suchvolumen fehlt noch. Trage es unter der Idee ein.`, "ok");
+    } else {
+      ideenTab = "geprueft";
+      ddMeldung(`Fertig: „${idee.text}“ ist ausgewertet (${r.ergebnis.slice(6, 10).trim()}). Du findest sie jetzt unter „Bereits geprüft“.`, "ok");
+    }
     loadIdeen();
   } catch (err) {
     ddMeldung("Hat nicht geklappt: " + err.message, "fehler");
