@@ -2543,7 +2543,8 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
   const mitSchwaeche = starke.filter(p => (p.sterne != null && p.sterne <= 4.2) || (p.bilder != null && p.bilder < 7));
   const p6 = mitSchwaeche.length >= 2 ? "grün" : mitSchwaeche.length === 1 ? "gelb" : "rot";
   // Suchvolumen nach eCommerce.de: ab 5.000 grün, 1.000 bis 5.000 typisch für genaue Nischen, darunter zu wenig
-  const p7 = naSV ? "rot" : topSV ? (topSV >= 5000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
+  // N/A: Data Dive kennt diesen Begriff nicht, obwohl es Umsatz gibt. Dann ist der Begriff meist falsch, nicht die Nachfrage
+  const p7 = topSV ? (topSV >= 5000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
   // Möglicher Umsatz: was das Mittelfeld der Top 15 schafft (Platz 6 bis 10), ist für eine neue Marke realistisch
   const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
   // Immer die Top 15 nehmen (wie im Niche Dive), sonst ziehen die vielen Kleinstanbieter einer Suchliste den Wert nach unten
@@ -2560,7 +2561,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
   const komma = n => String(n).replace(".", ",");
   const texte = [
     `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 && !filterInfo ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
-    naSV ? `Suchvolumen rot: „${name}“ hat bei Data Dive N/A, also kaum oder keine Suchen im Monat` : p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
+    naSV && !p7 ? `Suchvolumen unbekannt: „${name}“ hat bei Data Dive N/A. Der Begriff passt vermutlich nicht, probier einen anderen oder trage die Zahl ein` : p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
     `Dein Umsatz ${p8}: realistisch etwa ${euro(Math.round(deinUmsatz / 100) * 100)} im Monat (Ziel ab 10.000 €)`,
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
     `Bewertungen ${p3}: ${wenigBew.length} Anbieter mit unter 200 Bewertungen machen mindestens 10.000 €/Monat${wenigBew.length ? ` (${wenigBew.slice(0, 4).map(p => `${p.marke} ${p.bewertungen} Bew. ${euro(p.umsatz)}`).join(", ")})` : ""}, Mittel der Nische ${Math.round(medBew)} Bewertungen`,
