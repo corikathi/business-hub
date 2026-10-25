@@ -2578,7 +2578,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
       (mitSchwaeche.length ? ` (${mitSchwaeche.slice(0, 6).map(p => p.marke + (p.sterne <= 4.2 ? " " + komma(p.sterne) + " Sterne" : "") + (p.bilder != null && p.bilder < 7 ? " nur " + p.bilder + " Bilder" : "")).join(", ")})` : "")
       + (starke.length && starke.every(p => p.bilder == null) ? ". Bilder prüfst du selbst in den Links (der Dive-Export zählt sie nicht)" : ""),
     schwach.length ? `Verbesserung: ${schwach.length} Produkte mit höchstens 4,2 Sternen (${schwach.map(p => p.marke + " " + komma(p.sterne)).join(", ")})` : "Verbesserung: kein Anbieter mit vielen schwachen Bewertungen",
-    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${komma(p.sterne)} Sterne${p.bilder != null ? ", " + p.bilder + " Bilder" : ""})`).join("; "),
+    "Konkurrenten: " + [...produkte].sort((a, b) => b.umsatz - a.umsatz).slice(0, 10).map(p => `${p.marke} (${p.asin}, ${euro(p.umsatz)}, ${p.sterne == null ? "ohne Sterne" : komma(p.sterne) + " Sterne"}${p.bilder != null ? ", " + p.bilder + " Bilder" : ""})`).join("; "),
   ];
   // Die Produktliste kennt die Amazon-Gebühr pro Stück, das hilft bei der Rechnung
   const medGebuehr = median(produkte.map(p => p.gebuehr ?? null));
