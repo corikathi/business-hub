@@ -233,6 +233,10 @@ button.nchip.late{border-color:var(--red)}
 .pruef-block h4{margin:0 0 8px;font-size:14px;color:var(--accent)}
 .idee-knoepfe{display:flex;flex-wrap:wrap;gap:6px}
 .dd-knopf.pin{border-color:var(--accent);color:var(--accent)}
+.dd-nachtrag{display:grid;gap:4px;padding:8px 10px;border:1px dashed var(--warn);border-radius:10px}
+.dd-nachtrag small{font-size:12px;color:var(--warn)}
+.dd-nachtrag div{display:flex;gap:6px}
+.dd-nachtrag input{flex:1;min-width:0;padding:5px 8px;font-size:13px}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2029,6 +2033,9 @@ let ideenOffen = null;
 let ideenTab = null;
 let ideenCache = [];
 async function loadIdeen(){
+  // Nicht neu zeichnen, während du in der Ideen-Liste etwas eintippst
+  const fokus = document.activeElement;
+  if (fokus && fokus.closest && fokus.closest("#ideenBereich") && fokus.tagName === "INPUT") return;
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
   const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(500);
   const el = $("ideenBereich");
@@ -2070,6 +2077,7 @@ async function loadIdeen(){
         <div class="idee-kopf"><b>${esc(i.text)}</b>${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
+        ${ampel && /Suchvolumen unbekannt/.test(i.ergebnis) ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="number" inputmode="numeric" min="0" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Data-Dive-Export hochladen"}</button>
           ${i.status === "wird geprüft"
@@ -2123,6 +2131,20 @@ ddInput.type = "file"; ddInput.accept = ".zip,.csv,.xlsx,application/zip,text/cs
 ddInput.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
 document.body.appendChild(ddInput);
 $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
+  const svKnopf = e.target.closest("[data-sv]");
+  if (svKnopf) {
+    const feld = el => el.dataset.svwert === svKnopf.dataset.sv;
+    const input = [...document.querySelectorAll("[data-svwert]")].find(feld);
+    const sv = parseInt(String(input && input.value || "").replace(/D/g, ""), 10);
+    if (!sv) { ddMeldung("Bitte eine Zahl eintragen, zum Beispiel 18003.", "fehler"); return; }
+    const idee = (ideenCache || []).find(i => String(i.id) === svKnopf.dataset.sv);
+    if (!idee) return;
+    const neu = suchvolumenNachtragen(idee, sv);
+    const { error } = await sb.from("ideen").update(neu).eq("id", idee.id);
+    if (error) { ddMeldung("Konnte nicht gespeichert werden: " + error.message, "fehler"); return; }
+    ddMeldung(`Suchvolumen gespeichert. ${neu.ergebnis.split(".")[0]}.`, "ok");
+    return loadIdeen();
+  }
   const tab = e.target.closest("[data-ireiter]");
   if (tab) { ideenTab = tab.dataset.ireiter; return loadIdeen(); }
   const pin = e.target.closest("[data-pin]");
@@ -2138,6 +2160,25 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   ddInput.value = "";
   ddInput.click();
 });
+function suchvolumenNachtragen(idee, sv){
+  const kopf = /^Ampel (grün|gelb|rot). /.exec(idee.ergebnis || "");
+  if (!kopf) return {};
+  const p7 = sv >= 5000 ? "grün" : sv >= 1000 ? "gelb" : "rot";
+  const teile = idee.ergebnis.slice(kopf[0].length).split(" | ").map(t => /^Suchvolumen /.test(t)
+    ? `Suchvolumen ${p7}: wird ${sv.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000, selbst eingetragen)` : t);
+  const namen = ["Nachfrage", "Suchvolumen", "Marke", "Bewertungen", "Preis", "Neue Anbieter", "Schwächen"];
+  const farbe = {};
+  for (const n of namen) { const t = teile.find(x => x.startsWith(n + " ")); const f = t && new RegExp("^" + n + " (grün|gelb|rot):").exec(t); if (f) farbe[n] = f[1]; }
+  const werte = Object.values(farbe);
+  const ampel = farbe.Nachfrage === "rot" || farbe.Marke === "rot" || farbe.Preis === "rot" ? "rot"
+    : !werte.includes("rot") && werte.filter(x => x === "gelb").length <= 1 ? "grün" : "gelb";
+  const nichtGruen = namen.filter(n => farbe[n] && farbe[n] !== "grün");
+  const grund = ampel === kopf[1] ? idee.grund
+    : ampel === "grün" ? "Prüfenswert: Lohnt sich anzuschauen."
+    : ampel === "gelb" ? `Mit Haken: Vielleicht, nicht grün: ${nichtGruen.join(", ")}.`
+    : `Raus: Eher nicht, rot: ${namen.filter(n => farbe[n] === "rot").join(", ")}.`;
+  return { ergebnis: `Ampel ${ampel}. ` + teile.join(" | "), grund };
+}
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
 function ddMeldung(text, art){
   const el = $("ddStatus");
