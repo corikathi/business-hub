@@ -2184,7 +2184,7 @@ async function loadIdeen(){
       const vorschl = vorschlTeil ? vorschlTeil.replace(/^Vorschläge: /, "").split("; ").filter(Boolean) : [];
       const vorschlHtml = vorschl.length ? `<div class="dd-vorschl"><small>Mögliche Suchbegriffe aus den Titeln (zum Ausprobieren in Helium 10 Magnet):</small><div class="dd-chips">${vorschl.map(v => `<span class="dd-chip">${esc(v)}<button type="button" class="kopier" data-kopie="${esc(v)}" title="Kopieren" aria-label="Kopieren">⧉</button></span>`).join("")}</div></div>` : "";
       const offenKasten = ddOffen(i) ? `<div class="dd-offen">${vorschlHtml}<b>Noch nicht fertig: Niche Dive fehlt</b><ol><li>In Data Dive einen <b>Niche Dive</b> starten mit dem Suchbegriff <b class="dd-such">${esc(ddSuchbegriff(i))}</b> <button type="button" class="kopier" data-kopie="${esc(ddSuchbegriff(i))}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></li><li>Wenn er fertig ist: oben rechts herunterladen (ZIP)</li><li>Hier auf <b>ZIP hochladen</b> tippen</li></ol><div class="idee-knoepfe"><button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">ZIP hochladen</button></div><small>Oder nur das Suchvolumen (Search Volume) eintragen:</small><div class="dd-sv"><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : "";
-      details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
+      details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(k === "Nächster Schritt" ? ddJetztTun(i, v.join(": ")) : v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + kacheln + bewKasten + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
     const suchRoh = (/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1];
@@ -2401,6 +2401,12 @@ function ddSuchbegriff(i){
 function ddOffen(i){ return false; }
 // Erste Sichtung: nur aus einer Suchliste bewertet. Für die Übernahme als Produkt braucht es noch den Niche Dive
 // Vor der Übernahme als Produkt muss das Suchvolumen da sein (Keyword-Recherche mit Magnet oder Cerebro)
+// „Jetzt tun“ passend zum Stand: Nico liest die Bewertungen selbst, du entscheidest danach
+function ddJetztTun(i, gespeichert){
+  if (!/^Schlechte Bewertungen von/.test(gespeichert)) return gespeichert;
+  if (/ | Beschwerden: /.test(i.ergebnis || "")) return "Lies unten „Was Käufer stört“. Gibt es eine Beschwerde, die du lösen kannst? Dann Hersteller anfragen, sonst die Idee verwerfen.";
+  return "Nico liest die Bewertungen der schwächsten Konkurrenten automatisch und schreibt unten auf, was Käufer stört. Du musst nichts tun.";
+}
 function ddSvFehlt(i){ return /Suchvolumen unbekannt/.test(i.ergebnis || ""); }
 function ddVorlaeufig(i){ return /^Ampel /.test(i.ergebnis || "") && /(^| \| )(Gezählt|Achtung)/.test(i.ergebnis || "") && !/Quelle: Helium/.test(i.ergebnis || ""); }
 // Kurze Texte für Kacheln: Klammern, Nebensätze und lange Wendungen weg
