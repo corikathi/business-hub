@@ -2092,7 +2092,7 @@ async function loadIdeen(){
       // Ampel-Punkte als farbige Kacheln: was dafür spricht und was dagegen
       const PUNKT = /^(Nachfrage|Dein Umsatz|Suchvolumen|Marke|Bewertungen|Preis|Neue Anbieter|Schwächen) (grün|gelb|rot|unbekannt):? ?(.*)$/;
       const punkte = teile.map(t => PUNKT.exec(t)).filter(Boolean).map(([, name, farbe, text]) => ({ name, farbe, text: ddKurz(text) }));
-      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen): /.test(t) && !PUNKT.test(t));
+      const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen|Suchbegriff): /.test(t) && !PUNKT.test(t));
       const kachel = p => `<div class="dd-kachel ${p.farbe}"><small>${esc(p.name)}</small><b>${esc(p.text)}</b></div>`;
       const dafuer = punkte.filter(p => p.farbe === "grün"), dagegen = punkte.filter(p => p.farbe === "rot" || p.farbe === "gelb" || p.farbe === "unbekannt")
         .sort((a, b) => ["rot", "gelb", "unbekannt"].indexOf(a.farbe) - ["rot", "gelb", "unbekannt"].indexOf(b.farbe));
@@ -2104,11 +2104,12 @@ async function loadIdeen(){
       details = offenKasten + (oben.length && !ddOffen(i) ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + kacheln + `<details class="aufklapp unter"><summary>Konkurrenten und Details</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul>${ddOffen(i) ? "" : `<div class="dd-sv dd-sv-aendern"><small>Suchvolumen ändern:</small><input type="text" inputmode="numeric" placeholder="z. B. 38102" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>`}</details>`;
     }
-    const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
-    if (such) details = `<small class="idee-grund">Suchbegriff für Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
+    const such = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
+    if (such && ampel && !ddOffen(i)) details = `<small class="idee-grund">Suchbegriff für Amazon und Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>` + details;
+    else if (such && !ampel) details = `<small class="idee-grund">Suchbegriff für Amazon und Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
-        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b><button type="button" class="kopier" data-kopie="${esc(i.text)}" title="Titel kopieren" aria-label="Titel kopieren">⧉</button></span>${pille}</div>
+        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
         ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
@@ -2507,6 +2508,8 @@ ddInput.addEventListener("change", async () => {
       : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP, die Competitors-Datei oder die Produktliste hoch.");
     const zielIdee = ddZiel !== "neu" ? (ideenCache || []).find(i => String(i.id) === String(ddZiel)) : null;
     const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text);
+    const alterBegriff = zielIdee && /Suchbegriff: ([^·|]+)/.exec(zielIdee.ergebnis || "");
+    if (alterBegriff) r.ergebnis += " | Suchbegriff: " + alterBegriff[1].trim();
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: ddOffen({ ergebnis: r.ergebnis }) ? "wird geprüft" : "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
       : await sb.from("ideen").update({ ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
