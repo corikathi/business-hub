@@ -295,6 +295,7 @@ button.nchip.late{border-color:var(--red)}
 .top3-kopf{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .top3-kopf b{flex:1;min-width:0;font-size:14px}
 .top3-zahlen{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.sichtung{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px dashed var(--warn);color:var(--warn);white-space:nowrap}
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -2110,13 +2111,11 @@ async function loadIdeen(){
   // „Prüfe ich gerade“ steht fest oben; neue Ideen schieben dort nichts weg
   const pruefe = data.filter(i => i.status === "wird geprüft").sort((a, b) => a.text.localeCompare(b.text, "de"));
   // Nur aus einer Suchliste bewertet (oder Niche Dive fehlt): diese Ideen gehören nicht unter „Bereits geprüft“
-  const brauchtDive = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && (ddOffen(i) || /(^| \| )(Gezählt|Achtung)/.test(i.ergebnis || ""));
-  const dive = data.filter(brauchtDive).sort((a, b) => a.text.localeCompare(b.text, "de"));
-  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "") && !brauchtDive(i);
+  const istGeprueft = i => i.status !== "wird geprüft" && /^Ampel /.test(i.ergebnis || "");
   const ampelRang = i => ({ "grün": 0, "gelb": 1, "rot": 2 })[(/^Ampel (grün|gelb|rot)/.exec(i.ergebnis || "") || [])[1]] ?? 3;
   const geprueft = data.filter(istGeprueft).sort((a, b) => ampelRang(a) - ampelRang(b) || a.text.localeCompare(b.text, "de"));
   const gruppen = new Map();
-  for (const i of data) { if (i.status === "wird geprüft" || istGeprueft(i) || brauchtDive(i)) continue; const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
+  for (const i of data) { if (i.status === "wird geprüft" || istGeprueft(i)) continue; const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
   if (ideenOffen === null) ideenOffen = new Set();
   const karte = i => {
     const ampel = /^Ampel (grün|gelb|rot)\. /.exec(i.ergebnis || "");
@@ -2152,13 +2151,13 @@ async function loadIdeen(){
     else if (such && !ampel) details = `<small class="idee-grund">Suchbegriff für Amazon und Data Dive: <b class="dd-such">${esc(such[1].trim())}</b> <button type="button" class="kopier" data-kopie="${esc(such[1].trim())}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></small>`;
     return `
       <div class="idee-zeile ${["gut", "haken", "neu", "", "rot"][rang(i)]}">
-        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${pille}</div>
+        <div class="idee-kopf"><span class="idee-titel"><b>${esc(i.text)}</b></span>${ddVorlaeufig(i) ? `<span class="sichtung" title="Nur aus der Suchliste bewertet. Vor der Übernahme brauchst du den Niche Dive.">Erste Sichtung</span>` : ""}${pille}</div>
         ${i.grund && !/^Vorschlag, noch nicht geprüft/.test(i.grund) ? `<small class="idee-grund">${esc(i.grund.replace(/^(Prüfenswert|Mit Haken|Raus): /, ""))}</small>` : ""}
         ${details}
         ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Data Dive (Search Volume) eintragen:</small><div><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Data-Dive-Export hochladen"}</button>
-          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
+          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Niche Dive hochladen, dann übernehmen</button>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
           ${i.status === "wird geprüft"
             ? `<button type="button" class="ghost dd-knopf" data-pin="aus" data-id="${esc(i.id)}">Fertig geprüft</button>`
             : `<button type="button" class="ghost dd-knopf pin" data-pin="an" data-id="${esc(i.id)}">Prüfe ich gerade</button>`}
@@ -2169,20 +2168,16 @@ async function loadIdeen(){
   // Reiter oben: was du gerade prüfst, was schon geprüft ist, alle übrigen Ideen
   if (!ideenTab) ideenTab = pruefe.length ? "pruefe" : "alle";
   const rangliste = data.filter(i => ddPunktzahl(i) !== null).sort((a, b) => ddPunktzahl(b) - ddPunktzahl(a) || ddDeinUmsatz(b) - ddDeinUmsatz(a));
-  const reiter = [["pruefe", "Prüfe ich gerade", pruefe.length], ["dive", "Dive fehlt", dive.length], ["rang", "Rangliste", rangliste.length], ["geprueft", "Bereits geprüft", geprueft.length], ["alle", "Alle Ideen", data.length - pruefe.length - geprueft.length]]
+  const reiter = [["pruefe", "Prüfe ich gerade", pruefe.length], ["rang", "Rangliste", rangliste.length], ["geprueft", "Bereits geprüft", geprueft.length], ["alle", "Alle Ideen", data.length - pruefe.length - geprueft.length]]
     .map(([k, t, n]) => `<button type="button" class="ireiter ${ideenTab === k ? "on" : ""}" data-ireiter="${k}">${t} <span>${n}</span></button>`).join("");
   const leer = t => `<div class="muted" style="font-size:13px;padding:6px 0">${t}</div>`;
   const eigeneForm = `<form class="eigene-idee" id="eigeneIdee"><input id="eigeneIdeeText" maxlength="140" placeholder="Eigene Idee, z. B. Fahrradhalter aus Filz und Holz für die Wand" autocomplete="off"><button type="submit">Hinzufügen</button></form>`;
-  const diveBlock = dive.length ? `<div class="dive-block"><h4>Niche Dive nochmal hochladen (${dive.length})</h4><div class="note">Diese Ideen wurden nur aus einer Suchliste bewertet. Die Zahlen sind dadurch ungenau. Lade dafür den Niche Dive hoch.</div>${dive.map(karte).join("")}</div>` : "";
+  if (ideenTab === "dive") ideenTab = "geprueft";
   if (ideenTab === "pruefe") { el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + (pruefe.length ? pruefe.map(karte).join("") : leer("Noch nichts. Tippe bei einer Idee auf „Prüfe ich gerade“, dann steht sie hier.")); return; }
-  if (ideenTab === "dive") {
-    el.innerHTML = `<div class="ireiter-leiste">${reiter}</div><div class="note">Diese Ideen wurden nur aus einer Suchliste bewertet. Die Zahlen sind ungenau. Lade dafür den Niche Dive (ZIP) hoch.</div>` + (dive.length ? dive.map(karte).join("") : leer("Keine. Alle Ideen haben einen echten Niche Dive."));
-    return;
-  }
   if (ideenTab === "rang") {
     const zeile = (i, n) => {
       const p = ddPunktzahl(i), amp = (/^Ampel (\S+?)\./.exec(i.ergebnis) || [])[1], u = ddDeinUmsatz(i);
-      return `<details class="rang-zeile ${n < 3 ? "top" : ""}"><summary><span class="rang-nr">${n + 1}</span><span class="rang-name">${esc(i.text)}</span><span class="rang-umsatz">${u ? "ca. " + u.toLocaleString("de-DE") + " €/Monat" : ""}</span><span class="idee-status ampel-${amp}">${p} Punkte</span>${istProdukt(i) ? `<span class="rang-produkt">Produkt</span>` : ""}</summary>${karte(i)}</details>`;
+      return `<details class="rang-zeile ${n < 3 ? "top" : ""}"><summary><span class="rang-nr">${n + 1}</span><span class="rang-name">${esc(i.text)}</span><span class="rang-umsatz">${u ? "ca. " + u.toLocaleString("de-DE") + " €/Monat" : ""}</span><span class="idee-status ampel-${amp}">${p} Punkte</span>${ddVorlaeufig(i) ? `<span class="sichtung">Erste Sichtung</span>` : ""}${istProdukt(i) ? `<span class="rang-produkt">Produkt</span>` : ""}</summary>${karte(i)}</details>`;
     };
     el.innerHTML = `<div class="ireiter-leiste">${reiter}</div><div class="note">Alle grünen und gelben Ideen nach Punkten (0 bis 100). „Dein Umsatz“ zählt doppelt, gefundene Beschwerden bringen 10 Bonuspunkte. Tippe auf eine Zeile für Details.</div>`
       + (rangliste.length ? rangliste.map(zeile).join("") : leer("Noch keine. Sobald eine Idee mit Data Dive grün oder gelb ist, steht sie hier."));
@@ -2299,14 +2294,13 @@ function renderTop3(){
     const e = i.ergebnis || "", amp = (/^Ampel (\S+?)\./.exec(e) || [])[1], u = ddDeinUmsatz(i);
     const such = (/Suchbegriff: ([^·|]+)/.exec(e) || [])[1];
     const chance = (/ \| Chance: ([^|]*)/.exec(e) || [])[1];
-    return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b><span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
+    return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b>${ddVorlaeufig(i) ? `<span class="sichtung">Erste Sichtung</span>` : ""}<span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
       ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
-      <div class="idee-knoepfe"><button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button></div></div>`;
+      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Niche Dive hochladen, dann übernehmen</button><small>Die Zahlen sind aus der Suchliste. Vor der Übernahme prüft der Niche Dive sie genau.</small>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
   }).join("") + "</div>";
 }
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
-// Noch nicht fertig: Suchvolumen fehlt, also wurde kein Niche Dive hochgeladen (rote Ideen brauchen keinen mehr)
 // Suchbegriff aus dem Ideentitel: die ersten bedeutungsvollen Wörter, ohne Klammern und Zusätze
 function ddSuchbegriffAusTitel(t){
   const kern = String(t || "").replace(/\([^)]*\)/g, " ").split(/[,;–—]/)[0].replace(/\b(fürs?|für|mit|aus|und|oder|zum|zur|im|in|den|dem|der|die|das|ein|eine|von|auf|ohne|premium|geschenk|design|ideal)\b/gi, " ");
@@ -2317,7 +2311,10 @@ function ddSuchbegriff(i){
   if (s) return s[1].trim();
   return String(i.text || "").replace(/\s*\([^)]*\)/g, "").replace(/\s*\(Data Dive\)$/, "").toLowerCase().split(/[,–-]/)[0].trim().split(/\s+/).slice(0, 4).join(" ");
 }
-function ddOffen(i){ return /^Ampel (grün|gelb)/.test(i.ergebnis || "") && /Suchvolumen unbekannt/.test(i.ergebnis || ""); }
+// Früher: Pflicht-Kasten „Niche Dive fehlt“. Jetzt reicht für die erste Sichtung die Suchliste, darum nie mehr offen
+function ddOffen(i){ return false; }
+// Erste Sichtung: nur aus einer Suchliste bewertet. Für die Übernahme als Produkt braucht es noch den Niche Dive
+function ddVorlaeufig(i){ return /^Ampel /.test(i.ergebnis || "") && /(^| \| )(Gezählt|Achtung)/.test(i.ergebnis || ""); }
 // Kurze Texte für Kacheln: Klammern, Nebensätze und lange Wendungen weg
 function ddKurz(t){
   return String(t || "")
@@ -2357,6 +2354,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   if (prod) {
     const idee = (ideenCache || []).find(x => String(x.id) === prod.dataset.produkt);
     if (!idee || istProdukt(idee)) return;
+    if (ddVorlaeufig(idee)) { ddMeldung("Für die Übernahme brauchst du zuerst den Niche Dive (ZIP). Lade ihn bei der Idee hoch.", "fehler"); return; }
     const e2 = idee.ergebnis || "";
     const hole = re => (re.exec(e2) || [])[1];
     const zahl = s => s ? parseFloat(String(s).replace(/\./g, "").replace(",", ".")) : null;
@@ -2728,9 +2726,10 @@ ddInput.addEventListener("change", async () => {
     // Die Kategorie der Idee aufklappen, damit du das Ergebnis gleich siehst
     if (ideenOffen) ideenOffen.add(idee.richtung || "Ohne Kategorie");
     // Sagen, wo die Idee jetzt steht, damit sie nicht verschwindet
-    const suchliste = /(^| | )(Gezählt|Achtung)/.test(r.ergebnis);
+    const suchliste = /(^| \| )(Gezählt|Achtung)/.test(r.ergebnis);
     if (suchliste) {
-      ddMeldung(`„${idee.text}“ ist wieder nur eine Suchliste. Sie bleibt im Block „Niche Dive nochmal hochladen“, bis du den Niche Dive mit dem Suchbegriff hochlädst.`, "fehler");
+      if (idee.status !== "wird geprüft") ideenTab = "geprueft";
+      ddMeldung(`Erste Sichtung für „${idee.text}“ gespeichert (${r.ergebnis.slice(6, 10).trim()}). Das reicht für die Rangliste. Den Niche Dive brauchst du erst, wenn du die Idee als Produkt übernehmen willst.`, "ok");
     } else if (ddOffen({ ergebnis: r.ergebnis })) {
       ddMeldung(`„${idee.text}“ gespeichert, aber das Suchvolumen fehlt noch. Trage es unter der Idee ein.`, "ok");
     } else if (idee.status === "wird geprüft") {
