@@ -2057,7 +2057,8 @@ async function loadIdeen(){
       const oben = teile.filter(t => /^(Möglich|Nächster Schritt): /.test(t));
       const zahlen = teile.filter(t => !/^(Möglich|Nächster Schritt|Kennzahlen): /.test(t));
       const kaestchen = kz ? `<div class="dd-kz">${kz.replace(/^Kennzahlen: /, "").split("; ").map(x => { const [k, v] = x.split("~"); return `<div><small>${esc(k)}</small><b>${esc(v || "")}</b></div>`; }).join("")}</div>` : "";
-      details = kaestchen + (oben.length ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "")
+      // Zuerst: was du jetzt tun sollst, dann die Kennzahlen
+      details = (oben.length ? `<div class="dd-fazit">${oben.map(t => { const [k, ...v] = t.split(": "); return `<p><b>${esc(k === "Nächster Schritt" ? "Jetzt tun" : k)}:</b> ${esc(v.join(": "))}</p>`; }).join("")}</div>` : "") + kaestchen
         + `<details class="aufklapp unter"><summary>Zahlen im Detail und Konkurrenten</summary><ul class="dd-punkte">${zahlen.map(ddPunkt).join("")}</ul></details>`;
     }
     const such = !ampel && /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
