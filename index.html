@@ -2662,6 +2662,9 @@ ddInput.addEventListener("change", async () => {
       ddMeldung(`„${idee.text}“ ist wieder nur eine Suchliste. Sie bleibt im Block „Niche Dive nochmal hochladen“, bis du den Niche Dive mit dem Suchbegriff hochlädst.`, "fehler");
     } else if (ddOffen({ ergebnis: r.ergebnis })) {
       ddMeldung(`„${idee.text}“ gespeichert, aber das Suchvolumen fehlt noch. Trage es unter der Idee ein.`, "ok");
+    } else if (idee.status === "wird geprüft") {
+      ideenTab = "pruefe";
+      ddMeldung(`„${idee.text}“ ist ausgewertet (${r.ergebnis.slice(6, 10).trim()}). Sie bleibt unter „Prüfe ich gerade“, bis du „Fertig geprüft“ drückst.`, "ok");
     } else {
       ideenTab = "geprueft";
       ddMeldung(`Fertig: „${idee.text}“ ist ausgewertet (${r.ergebnis.slice(6, 10).trim()}). Du findest sie jetzt unter „Bereits geprüft“.`, "ok");
