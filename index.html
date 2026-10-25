@@ -2253,7 +2253,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
     : !punkte.includes("rot") && punkte.filter(x => x === "gelb").length <= 1 ? "grün" : "gelb";
   const komma = n => String(n).replace(".", ",");
   const texte = [
-    `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
+    `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 && !filterInfo ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
     p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
     `Bewertungen ${p3}: ${wenigBew.length} Anbieter mit unter 200 Bewertungen machen mindestens 10.000 €/Monat${wenigBew.length ? ` (${wenigBew.slice(0, 4).map(p => `${p.marke} ${p.bewertungen} Bew. ${euro(p.umsatz)}`).join(", ")})` : ""}, Mittel der Nische ${Math.round(medBew)} Bewertungen`,
