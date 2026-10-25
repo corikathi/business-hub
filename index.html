@@ -2329,14 +2329,24 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
     }));
   }
   if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es ein Data-Dive-Export mit Konkurrenten?");
-  // Suchliste: nur Produkte zählen, deren Titel zum Hauptwort der Idee passt (z. B. „keilkissen“)
+  // Suchliste: nur Produkte zählen, die wirklich zur Idee passen.
+  // Wichtige Wörter der Idee (ohne Füllwörter) als Wortstamm; ein Titel braucht mindestens 2 davon (bei nur einem Wort: dieses eine)
   let filterInfo = "";
   if (listText && !compText) {
-    const wort = (String(hinweis || dateiname || "").toLowerCase().match(/[a-zäöüß]{5,}/) || [])[0];
-    if (wort) {
-      const passend = produkte.filter(p => (p.titel || "").toLowerCase().includes(wort));
-      if (passend.length >= 5 && passend.length < produkte.length) { filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern mit „${wort}“ im Titel`; produkte = passend; }
-      else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle mit „${wort}“ im Titel`;
+    const norm = t => String(t || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+    const staemme = [...ideenWoerter(hinweis || String(dateiname || "").replace(/\.(csv|xlsx?|zip)$/i, ""))].map(w => w.slice(0, 5));
+    if (staemme.length) {
+      // Erst streng (Hälfte der Wörter), reicht das nicht für 5 Produkte, dann mit 2 Wörtern
+      const passt = n => produkte.filter(p => staemme.filter(st => norm(p.titel).includes(st)).length >= n);
+      let noetig = Math.min(staemme.length, Math.max(2, Math.ceil(staemme.length / 2)));
+      let passend = passt(noetig);
+      if (passend.length < 5 && noetig > 2) { noetig = 2; passend = passt(2); }
+      const woerter = staemme.join(", ");
+      if (passend.length >= 5 && passend.length < produkte.length) {
+        filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern, die zur Idee passen (mindestens ${noetig} von: ${woerter}). ${produkte.length - passend.length} andere Produkte sind raus`;
+        produkte = passend;
+      } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle passen zur Idee`;
+      else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen zur Idee. Die Zahlen sind unsicher, mach einen Niche Dive`;
     }
   }
   let name = "", topSV = 0;
