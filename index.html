@@ -2312,7 +2312,7 @@ function ddCsv(text){
   }
   return zeilen;
 }
-function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
+function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbegriff){
   const zahl = s => { const n = parseFloat(String(s || "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
   const monate = s => { const j = /(\d+)\s*yr/.exec(s || ""), m = /(\d+)\s*mo/.exec(s || ""); return (j ? +j[1] * 12 : 0) + (m ? +m[1] : 0); };
   const median = a => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
@@ -2333,7 +2333,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
     const lz = ddCsv(listText), k = lz.findIndex(r => r.some(c => c.trim() === "ASINs"));
     const kopf = lz[k] || [];
     const sp = n => kopf.findIndex(c => c.trim().startsWith(n));
-    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier"), iI = kopf.findIndex(c => c.trim() === "Img"), iN = kopf.findIndex(c => c.trim() === "Products");
+    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier"), iI = kopf.findIndex(c => c.trim() === "Img"), iN = kopf.findIndex(c => c.trim() === "Products"), iSa = kopf.findIndex(c => c.trim() === "Sales");
     const seit = s => {
       const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "").trim());
       if (!d) return zahl(s) ?? monate(s);
@@ -2342,30 +2342,36 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
     };
     produkte = lz.slice(k + 1).filter(z => /^B0[A-Z0-9]{8}$/.test((z[iA] || "").trim())).map(z => ({
       asin: z[iA].trim(), titel: iN >= 0 ? z[iN] || "" : "", marke: z[iB], preis: zahl(z[iP]), umsatz: zahl(z[iR]) || 0, sterne: zahl(z[iS]),
-      bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "", bilder: iI >= 0 ? zahl(z[iI]) : null,
+      bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "", bilder: iI >= 0 ? zahl(z[iI]) : null, stueckMonat: iSa >= 0 ? zahl(z[iSa]) : null,
     }));
   }
   if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es ein Data-Dive-Export mit Konkurrenten?");
-  // Suchliste: nur Produkte zählen, die wirklich zur Idee passen.
-  // Wichtige Wörter der Idee (ohne Füllwörter) als Wortstamm; ein Titel braucht mindestens 2 davon (bei nur einem Wort: dieses eine)
+  // Varianten zusammenfassen: gleiche Marke mit genau gleichem Umsatz und gleichen Verkäufen ist ein Angebot (Data Dive listet jede Variante einzeln)
+  let variantenInfo = "";
+  {
+    const gesehen = new Set(), vorher = produkte.length;
+    produkte = produkte.filter(p => { const k = [p.marke, Math.round(p.umsatz), p.stueckMonat ?? ""].join("|"); if (p.umsatz > 0 && gesehen.has(k)) return false; gesehen.add(k); return true; });
+    if (produkte.length < vorher) variantenInfo = `Varianten: ${vorher - produkte.length} doppelte Einträge (gleiche Marke, gleicher Umsatz) nur einmal gezählt`;
+  }
+  // Suchliste: nur Produkte zählen, die zur Nische gehören. Kernwörter = Wörter aus Suchbegriff oder Idee, die in mindestens der Hälfte der Titel stehen
   let filterInfo = "";
   if (listText && !compText) {
     const norm = t => String(t || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
-    const staemme = [...ideenWoerter(hinweis || String(dateiname || "").replace(/\.(csv|xlsx?|zip)$/i, ""))].map(w => w.slice(0, 5));
+    const quelle = suchbegriff || hinweis || String(dateiname || "").replace(/\.(csv|xlsx?|zip)$/i, "");
+    const staemme = [...ideenWoerter(quelle)].map(w => w.slice(0, 5));
     if (staemme.length) {
-      // Erst streng (Hälfte der Wörter), reicht das nicht für 5 Produkte, dann mit 2 Wörtern
-      const passt = n => produkte.filter(p => staemme.filter(st => norm(p.titel).includes(st)).length >= n);
-      let noetig = Math.min(staemme.length, Math.max(2, Math.ceil(staemme.length / 2)));
-      let passend = passt(noetig);
-      if (passend.length < 5 && noetig > 2) { noetig = 2; passend = passt(2); }
-      const woerter = staemme.join(", ");
+      const anteil = st => produkte.filter(p => norm(p.titel).includes(st)).length / produkte.length;
+      let kern = staemme.filter(st => anteil(st) >= 0.5);
+      if (!kern.length) kern = [staemme.slice().sort((a, b) => anteil(b) - anteil(a))[0]];
+      const passend = produkte.filter(p => kern.every(st => norm(p.titel).includes(st)));
       if (passend.length >= 5 && passend.length < produkte.length) {
-        filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern, die zur Idee passen (mindestens ${noetig} von: ${woerter}). ${produkte.length - passend.length} andere Produkte sind raus`;
+        filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern mit „${kern.join("“ und „")}“ im Titel. ${produkte.length - passend.length} andere Produkte sind raus`;
         produkte = passend;
-      } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle passen zur Idee`;
-      else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen zur Idee. Die Zahlen sind unsicher, mach einen Niche Dive`;
+      } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle mit „${kern.join("“ und „")}“ im Titel`;
+      else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen. Die Zahlen sind unsicher, mach einen Niche Dive`;
     }
   }
+  if (variantenInfo) filterInfo = filterInfo ? filterInfo + ". " + variantenInfo : variantenInfo;
   let name = "", topSV = 0;
   if (kwText) {
     const kz = ddCsv(kwText), k = kz.findIndex(r => r.includes("Search Terms"));
@@ -2507,8 +2513,8 @@ ddInput.addEventListener("change", async () => {
       ? "Das ist nur die Keyword-Datei. Für die Ampel brauche ich die Tabelle mit den Konkurrenten (Competitors oder die Produktliste). Wähle beide Dateien zusammen aus oder lade die ZIP hoch."
       : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP, die Competitors-Datei oder die Produktliste hoch.");
     const zielIdee = ddZiel !== "neu" ? (ideenCache || []).find(i => String(i.id) === String(ddZiel)) : null;
-    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text);
     const alterBegriff = zielIdee && /Suchbegriff: ([^·|]+)/.exec(zielIdee.ergebnis || "");
+    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text, alterBegriff && alterBegriff[1].trim());
     if (alterBegriff) r.ergebnis += " | Suchbegriff: " + alterBegriff[1].trim();
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: ddOffen({ ergebnis: r.ergebnis }) ? "wird geprüft" : "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
