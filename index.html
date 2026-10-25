@@ -2027,6 +2027,7 @@ const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "B
 // Welche Kategorien aufgeklappt sind, bleibt beim automatischen Neuladen erhalten
 let ideenOffen = null;
 let ideenTab = null;
+let ideenCache = [];
 async function loadIdeen(){
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
   const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(500);
@@ -2034,6 +2035,7 @@ async function loadIdeen(){
   if (!el) return;
   const hochladen = `<div class="dd-leiste"><button type="button" class="ghost" data-dd="neu">Data-Dive-Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
+  ideenCache = data || [];
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
   // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft, rot nach Data Dive
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
@@ -2159,7 +2161,7 @@ function ddCsv(text){
   }
   return zeilen;
 }
-function nischeAuswerten(compText, kwText, listText, dateiname){
+function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
   const zahl = s => { const n = parseFloat(String(s || "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
   const monate = s => { const j = /(\d+)\s*yr/.exec(s || ""), m = /(\d+)\s*mo/.exec(s || ""); return (j ? +j[1] * 12 : 0) + (m ? +m[1] : 0); };
   const median = a => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
@@ -2180,7 +2182,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
     const lz = ddCsv(listText), k = lz.findIndex(r => r.some(c => c.trim() === "ASINs"));
     const kopf = lz[k] || [];
     const sp = n => kopf.findIndex(c => c.trim().startsWith(n));
-    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier"), iI = kopf.findIndex(c => c.trim() === "Img");
+    const iA = sp("ASINs"), iB = sp("Brand"), iP = sp("Price"), iR = sp("Rev,"), iS = sp("Rating"), iV = sp("Reviews"), iM = sp("Months"), iF = sp("Fees"), iT = sp("Size Tier"), iI = kopf.findIndex(c => c.trim() === "Img"), iN = kopf.findIndex(c => c.trim() === "Products");
     const seit = s => {
       const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "").trim());
       if (!d) return zahl(s) ?? monate(s);
@@ -2188,11 +2190,21 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
       return (jetzt.getFullYear() - +d[1]) * 12 + (jetzt.getMonth() + 1 - +d[2]);
     };
     produkte = lz.slice(k + 1).filter(z => /^B0[A-Z0-9]{8}$/.test((z[iA] || "").trim())).map(z => ({
-      asin: z[iA].trim(), marke: z[iB], preis: zahl(z[iP]), umsatz: zahl(z[iR]) || 0, sterne: zahl(z[iS]),
+      asin: z[iA].trim(), titel: iN >= 0 ? z[iN] || "" : "", marke: z[iB], preis: zahl(z[iP]), umsatz: zahl(z[iR]) || 0, sterne: zahl(z[iS]),
       bewertungen: zahl(z[iV]), alter: seit(z[iM]), gebuehr: iF >= 0 ? zahl(z[iF]) : null, groesse: iT >= 0 ? z[iT] : "", bilder: iI >= 0 ? zahl(z[iI]) : null,
     }));
   }
   if (!produkte.length) throw new Error("In der Datei stehen keine Anbieter. Ist es ein Data-Dive-Export mit Konkurrenten?");
+  // Suchliste: nur Produkte zählen, deren Titel zum Hauptwort der Idee passt (z. B. „keilkissen“)
+  let filterInfo = "";
+  if (listText && !compText) {
+    const wort = (String(hinweis || dateiname || "").toLowerCase().match(/[a-zäöüß]{5,}/) || [])[0];
+    if (wort) {
+      const passend = produkte.filter(p => (p.titel || "").toLowerCase().includes(wort));
+      if (passend.length >= 5 && passend.length < produkte.length) { filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern mit „${wort}“ im Titel`; produkte = passend; }
+      else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle mit „${wort}“ im Titel`;
+    }
+  }
   let name = "", topSV = 0;
   if (kwText) {
     const kz = ddCsv(kwText), k = kz.findIndex(r => r.includes("Search Terms"));
@@ -2291,9 +2303,8 @@ function nischeAuswerten(compText, kwText, listText, dateiname){
   ].filter(Boolean).join("; ") : "";
   const schwachText = schwach.length ? schwach.slice(0, 2).map(p => `${p.marke} (${String(p.sterne).replace(".", ",")} ★)`).join(" und ") : "die Top 3";
   const naechster = ampel === "rot" ? "Nächster Schritt: nächste Idee nehmen."
-    : listText && !compText ? "Nächster Schritt: Dive-Export (Competitors und Keywords) für genau diesen Suchbegriff hochladen, die Suchliste enthält auch andere Produkte."
     : `Nächster Schritt: Schlechte Bewertungen von ${schwachText} lesen. Kommt eine Beschwerde immer wieder, die du lösen kannst? Dann Hersteller anfragen.`;
-  const ergebnis = `Ampel ${ampel}. ` + [kennzahlen, naechster, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
+  const ergebnis = `Ampel ${ampel}. ` + [kennzahlen, naechster, filterInfo, `Umsatz Nische ${euro(gesamt)}/Monat, ${produkte.length} Anbieter`, ...texte].filter(Boolean).join(" | ");
   const grund = (ampel === "grün" ? "Prüfenswert: " : ampel === "gelb" ? "Mit Haken: " : "Raus: ") + fazit;
   return { name, ergebnis, grund };
 }
@@ -2328,7 +2339,8 @@ ddInput.addEventListener("change", async () => {
     if (!compText && !listText) throw new Error(kwText
       ? "Das ist nur die Keyword-Datei. Für die Ampel brauche ich die Tabelle mit den Konkurrenten (Competitors oder die Produktliste). Wähle beide Dateien zusammen aus oder lade die ZIP hoch."
       : "In der Datei habe ich keine Data-Dive-Tabelle gefunden. Lade die ZIP, die Competitors-Datei oder die Produktliste hoch.");
-    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name);
+    const zielIdee = ddZiel !== "neu" ? (ideenCache || []).find(i => String(i.id) === String(ddZiel)) : null;
+    const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text);
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
       : await sb.from("ideen").update({ ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
