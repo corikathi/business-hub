@@ -2473,16 +2473,20 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
   if (listText && !compText) {
     const norm = t => String(t || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
     const quelle = suchbegriff || hinweis || String(dateiname || "").replace(/\.(csv|xlsx?|zip)$/i, "");
-    const staemme = [...ideenWoerter(quelle)].map(w => w.slice(0, 5));
+    // Vier Buchstaben pro Wort, damit Synonyme mitzählen (Fußstütze/Fußablage/Fußbank: „fuss“)
+    const staemme = [...new Set([...ideenWoerter(quelle)].map(w => w.slice(0, 4)))];
     if (staemme.length) {
       const anteil = st => produkte.filter(p => norm(p.titel).includes(st)).length / produkte.length;
-      let kern = staemme.filter(st => anteil(st) >= 0.5);
+      // Kernwörter: stehen in mindestens 30 % der Suchtreffer (Füllwörter und seltene Eigenschaften fallen raus)
+      let kern = staemme.filter(st => anteil(st) >= 0.3);
       if (!kern.length) kern = [staemme.slice().sort((a, b) => anteil(b) - anteil(a))[0]];
-      const passend = produkte.filter(p => kern.every(st => norm(p.titel).includes(st)));
+      // Ein Produkt zählt, wenn mindestens zwei Kernwörter (bzw. alle, wenn es nur eins gibt) im Titel stehen
+      const noetig = Math.min(2, kern.length);
+      const passend = produkte.filter(p => kern.filter(st => norm(p.titel).includes(st)).length >= noetig);
       if (passend.length >= 5 && passend.length < produkte.length) {
-        filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern mit „${kern.join("“ und „")}“ im Titel. ${produkte.length - passend.length} andere Produkte sind raus`;
+        filterInfo = `Gezählt: ${passend.length} von ${produkte.length} Suchtreffern, die zur Nische gehören (Wörter: ${kern.join(", ")}). ${produkte.length - passend.length} andere Produkte sind raus`;
         produkte = passend;
-      } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer, alle mit „${kern.join("“ und „")}“ im Titel`;
+      } else if (passend.length === produkte.length) filterInfo = `Gezählt: alle ${produkte.length} Suchtreffer gehören zur Nische`;
       else filterInfo = `Achtung: nur ${passend.length} von ${produkte.length} Suchtreffern passen. Die Zahlen sind unsicher, mach einen Niche Dive`;
     }
   }
