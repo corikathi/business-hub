@@ -2166,11 +2166,11 @@ function suchvolumenNachtragen(idee, sv){
   const p7 = sv >= 5000 ? "grün" : sv >= 1000 ? "gelb" : "rot";
   const teile = idee.ergebnis.slice(kopf[0].length).split(" | ").map(t => /^Suchvolumen /.test(t)
     ? `Suchvolumen ${p7}: wird ${sv.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000, selbst eingetragen)` : t);
-  const namen = ["Nachfrage", "Suchvolumen", "Marke", "Bewertungen", "Preis", "Neue Anbieter", "Schwächen"];
+  const namen = ["Nachfrage", "Dein Umsatz", "Suchvolumen", "Marke", "Bewertungen", "Preis", "Neue Anbieter", "Schwächen"];
   const farbe = {};
   for (const n of namen) { const t = teile.find(x => x.startsWith(n + " ")); const f = t && new RegExp("^" + n + " (grün|gelb|rot):").exec(t); if (f) farbe[n] = f[1]; }
   const werte = Object.values(farbe);
-  const ampel = farbe.Nachfrage === "rot" || farbe.Marke === "rot" || farbe.Preis === "rot" ? "rot"
+  const ampel = farbe.Nachfrage === "rot" || farbe.Marke === "rot" || farbe.Preis === "rot" || farbe["Dein Umsatz"] === "rot" ? "rot"
     : !werte.includes("rot") && werte.filter(x => x === "gelb").length <= 1 ? "grün" : "gelb";
   const nichtGruen = namen.filter(n => farbe[n] && farbe[n] !== "grün");
   const grund = ampel === kopf[1] ? idee.grund
@@ -2288,14 +2288,23 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
   const p6 = mitSchwaeche.length >= 2 ? "grün" : mitSchwaeche.length === 1 ? "gelb" : "rot";
   // Suchvolumen nach eCommerce.de: ab 5.000 grün, 1.000 bis 5.000 typisch für genaue Nischen, darunter zu wenig
   const p7 = topSV ? (topSV >= 5000 ? "grün" : topSV >= 1000 ? "gelb" : "rot") : null;
-  const punkte = [p1, p2, p3, p4, p5, p6, p7].filter(Boolean);
+  // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
+  // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
+  const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
+  const mittelfeld = sortiert.slice(Math.floor(sortiert.length / 3), Math.ceil(sortiert.length * 2 / 3)).map(p => p.umsatz).filter(u => u > 0);
+  const von = Math.min(...mittelfeld), bis = Math.max(...mittelfeld);
+  // Dein Umsatz (Corinna: unter 10.000 € im Monat ist zu wenig): Mitte der realistischen Spanne
+  const deinUmsatz = mittelfeld.length ? (von + bis) / 2 : 0;
+  const p8 = deinUmsatz >= 10000 ? "grün" : deinUmsatz >= 7000 ? "gelb" : "rot";
+  const punkte = [p1, p2, p3, p4, p5, p6, p7, p8].filter(Boolean);
   // Rot, sobald Nachfrage/Blue Ocean, Marke oder Preis rot ist; grün, wenn nichts rot und höchstens ein Punkt gelb ist
-  const ampel = p1 === "rot" || p2 === "rot" || p4 === "rot" ? "rot"
+  const ampel = p1 === "rot" || p2 === "rot" || p4 === "rot" || p8 === "rot" ? "rot"
     : !punkte.includes("rot") && punkte.filter(x => x === "gelb").length <= 1 ? "grün" : "gelb";
   const komma = n => String(n).replace(".", ",");
   const texte = [
     `Nachfrage ${p1}: ${nStark} Marken mit mindestens 10.000 €/Monat (Ziel 5 bis 10, über 15 ist ein Red Ocean)${nurSuchliste && nStark > 10 && !filterInfo ? ". Achtung: Die Suchliste zählt auch andere Produkte mit, prüfe das mit dem Dive-Export" : ""}`,
     p7 ? `Suchvolumen ${p7}: „${name}“ wird ${topSV.toLocaleString("de-DE")}-mal im Monat gesucht (Ziel ab 5.000, genaue Nischen ab 1.000)` : "Suchvolumen unbekannt: lade die Keyword-Datei mit hoch",
+    `Dein Umsatz ${p8}: realistisch etwa ${euro(Math.round(deinUmsatz / 100) * 100)} im Monat (Ziel ab 10.000 €)`,
     `Marke ${p2}: ${topMarke} hat ${anteil} % vom Umsatz`,
     `Bewertungen ${p3}: ${wenigBew.length} Anbieter mit unter 200 Bewertungen machen mindestens 10.000 €/Monat${wenigBew.length ? ` (${wenigBew.slice(0, 4).map(p => `${p.marke} ${p.bewertungen} Bew. ${euro(p.umsatz)}`).join(", ")})` : ""}, Mittel der Nische ${Math.round(medBew)} Bewertungen`,
     `Preis ${p4}: ${ab50.length} Anbieter verkaufen ab 50 € mit mindestens 10.000 €/Monat${ab50.length ? ` (${ab50.slice(0, 4).map(p => p.marke + " " + p.preis.toFixed(2).replace(".", ",") + " €").join(", ")})` : ""}, Mittel der Nische ${medPreis != null ? medPreis.toFixed(2).replace(".", ",") : "?"} €`,
@@ -2317,6 +2326,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
   const gruende = [
     p1 !== "grün" && (nStark > 10 ? "es sind schon sehr viele starke Anbieter da" : "nur wenige Anbieter verdienen richtig gut"),
     p7 && p7 !== "grün" && "es wird eher wenig gesucht",
+    p8 !== "grün" && "dein Umsatz läge eher unter 10.000 € im Monat",
     p2 !== "grün" && `${topMarke} ist sehr stark (${anteil} % vom Umsatz)`,
     p3 !== "grün" && "neue Anbieter ohne viele Bewertungen verkaufen kaum",
     p4 !== "grün" && "kaum jemand verkauft hier gut ab 50 €",
@@ -2325,12 +2335,7 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis){
   ].filter(Boolean);
   const fazit = ampel === "grün" ? (gruende.length ? `Lohnt sich anzuschauen. Einziger Haken: ${gruende[0]}.` : "Lohnt sich anzuschauen.")
     : ampel === "gelb" ? `Vielleicht: ${gruende.join(", ")}.`
-    : `Eher nicht: ${[p1 === "rot" && (nStark > 15 ? "zu viele starke Anbieter (Red Ocean)" : "zu wenig Anbieter mit 10.000 € im Monat"), p2 === "rot" && `${topMarke} beherrscht die Nische`, p4 === "rot" && "niemand verkauft hier gut ab 50 €"].filter(Boolean).join(" und ")}.`;
-  // Möglicher Umsatz: was das mittlere Drittel der Anbieter schafft, ist für eine neue Marke realistisch
-  // (bei 15 Anbietern sind das Platz 6 bis 10, bei langen Suchlisten entsprechend weiter unten)
-  const sortiert = [...produkte].sort((a, b) => b.umsatz - a.umsatz);
-  const mittelfeld = sortiert.slice(Math.floor(sortiert.length / 3), Math.ceil(sortiert.length * 2 / 3)).map(p => p.umsatz).filter(u => u > 0);
-  const von = Math.min(...mittelfeld), bis = Math.max(...mittelfeld);
+    : `Eher nicht: ${[p1 === "rot" && (nStark > 15 ? "zu viele starke Anbieter (Red Ocean)" : "zu wenig Anbieter mit 10.000 € im Monat"), p2 === "rot" && `${topMarke} beherrscht die Nische`, p4 === "rot" && "niemand verkauft hier gut ab 50 €", p8 === "rot" && "für dich wären realistisch nur rund " + euro(Math.round(deinUmsatz / 100) * 100) + " im Monat drin"].filter(Boolean).join(" und ")}.`;
   const rund = n => Math.round(n / 100) * 100;
   const stueck = medPreis ? [Math.round(von / medPreis), Math.round(bis / medPreis)] : null;
   const maxEk = stueck ? (2000 / (stueck[0] * 2)).toFixed(2).replace(".", ",") : null;
