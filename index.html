@@ -303,6 +303,12 @@ button.nchip.late{border-color:var(--red)}
 .ablauf[open] > summary::before{content:"▾ "}
 .ablauf ol{margin:8px 0 6px;padding-left:20px;display:grid;gap:5px}
 .ablauf small{color:var(--muted)}
+.naechste{display:grid;gap:6px;border:1px solid var(--warn);border-radius:12px;padding:10px 12px;margin:0 0 12px;background:rgba(245,194,107,.05)}
+.naechste h4{margin:0;font-size:14px;color:var(--warn)}
+.naechste-zeile{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.naechste-zeile b{display:block;font-size:13px}
+.naechste-zeile small{color:var(--muted);font-size:11px}
+@media (max-width:600px){ .naechste-zeile{grid-template-columns:1fr auto} .naechste-zeile .dd-knopf{grid-column:1 / -1;justify-self:start} }
 .dd-status{font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;margin:4px 0 10px;border:1px solid var(--line);color:var(--ink)}
 .dd-status.ok{border-color:var(--ok);background:rgba(111,224,176,.08)}
 .dd-status.fehler{border-color:var(--red);background:rgba(255,122,122,.08)}
@@ -827,6 +833,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
                 </ol>
                 <small>Neue Nischen ohne Nicos Ideen: In der Schwarzen Box die Filter setzen (Suchvolumen ab 5.000, Umsatz ab 10.000, Preis ab 50, Wortanzahl 2 bis 4) und „Filter speichern“.</small>
               </details>
+              <div id="naechste"></div>
               <div id="ddStatus" class="dd-status" hidden></div>
               <div id="ideenBereich"></div>
             </div>
@@ -2124,6 +2131,7 @@ async function loadIdeen(){
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   ideenCache = data || [];
   renderTop3();
+  renderNaechste();
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
   // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft, rot nach Data Dive
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
@@ -2256,6 +2264,16 @@ function ideenGleich(a, b){
   if (!x.size || !y.size) return false;
   return [...x].filter(w => y.has(w)).length / new Set([...x, ...y]).size >= 0.7;
 }
+$("naechste") && $("naechste").addEventListener("click", async e => {
+  const kopie = e.target.closest("[data-kopie]");
+  if (kopie) {
+    try { await navigator.clipboard.writeText(kopie.dataset.kopie); } catch { const t = document.createElement("textarea"); t.value = kopie.dataset.kopie; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+    kopie.textContent = "✓"; kopie.classList.add("ok"); setTimeout(() => { kopie.textContent = "⧉"; kopie.classList.remove("ok"); }, 1500);
+    return;
+  }
+  const b = e.target.closest("[data-dd]");
+  if (b) { ddZiel = b.dataset.dd; ddInput.value = ""; ddInput.click(); }
+});
 $("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
   const g = e.target.closest && e.target.closest("[data-ideengruppe]");
   if (!g || !ideenOffen) return;
@@ -2317,6 +2335,28 @@ function renderTop3(){
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
       ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
       <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Niche Dive hochladen, dann übernehmen</button><small>Die Zahlen sind aus der Suchliste. Vor der Übernahme prüft der Niche Dive sie genau.</small>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
+  }).join("") + "</div>";
+}
+// To-do: welche Suchbegriffe du als Nächstes in Helium 10 prüfst
+// 1. Ideen in Arbeit („Prüfe ich gerade“) ohne Ampel, 2. ausgewertete grüne/gelbe Ideen ohne Suchvolumen, 3. Nicos prüfenswerte Ideen ohne Ampel
+function renderNaechste(){
+  const el = $("naechste");
+  if (!el) return;
+  const alle = ideenCache || [];
+  const hatAmpel = i => /^Ampel /.test(i.ergebnis || "");
+  const offen = [
+    ...alle.filter(i => i.status === "wird geprüft" && !hatAmpel(i)).map(i => ({ i, was: "Xray und Schwarze Box" })),
+    ...alle.filter(i => /^Ampel (grün|gelb)/.test(i.ergebnis || "") && /Suchvolumen unbekannt/.test(i.ergebnis || "")).map(i => ({ i, was: "nur Schwarze Box (Suchvolumen fehlt)" })),
+    ...alle.filter(i => i.status !== "wird geprüft" && !hatAmpel(i) && /^Prüfenswert/.test(i.grund || "")).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).map(i => ({ i, was: "Xray und Schwarze Box" })),
+  ];
+  const gesehen = new Set();
+  const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 5);
+  if (!liste.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4>` + liste.map(({ i, was }) => {
+    const begriff = ddSuchbegriff(i);
+    return `<div class="naechste-zeile"><div><b>${esc(i.text)}</b><small>${esc(was)}</small></div>
+      <span class="dd-chip">${esc(begriff)}<button type="button" class="kopier" data-kopie="${esc(begriff)}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></span>
+      <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">Hochladen</button></div>`;
   }).join("") + "</div>";
 }
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
