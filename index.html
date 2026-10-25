@@ -2552,9 +2552,9 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
   if (variantenInfo) filterInfo = filterInfo ? filterInfo + ". " + variantenInfo : variantenInfo;
   let name = "", topSV = 0, naSV = false;
   if (kwText) {
-    const kz = ddCsv(kwText), k = kz.findIndex(r => r.includes("Search Terms") || r.includes("Keyword Phrase"));
+    const kz = ddCsv(kwText), k = kz.findIndex(r => r.includes("Search Terms") || r.includes("Keyword Phrase") || r.includes("Phrase"));
     if (k >= 0) {
-      const t = kz[k].indexOf("Search Terms") >= 0 ? kz[k].indexOf("Search Terms") : kz[k].indexOf("Keyword Phrase");
+      const t = ["Search Terms", "Keyword Phrase", "Phrase"].map(n => kz[k].indexOf(n)).find(x => x >= 0);
       const s = kz[k].indexOf("SV") >= 0 ? kz[k].indexOf("SV") : kz[k].findIndex(c => /^Search Volume/.test(String(c).trim()));
       for (const z of kz.slice(k + 1)) {
         const roh = String(z[s] ?? "").trim();
@@ -2696,7 +2696,7 @@ ddInput.addEventListener("change", async () => {
     // Jede Datei als Text (CSV) lesen; Excel wird in CSV umgewandelt. Welche Tabelle es ist, erkennt der Inhalt.
     let compText = null, kwText = null, listText = null;
     const zuordnen = text => {
-      if (/(^|,)"?(Search Terms|Keyword Phrase)"?(,|$)/m.test(text)) kwText = kwText || text;
+      if (/(^|,)"?(Search Terms|Keyword Phrase)"?(,|$)/m.test(text) || (/(^|,)"?Phrase"?(,|$)/m.test(text) && /Search Volume/.test(text))) kwText = kwText || text;
       else if (/(^|,)"?Competitors"?(,|$)/m.test(text)) compText = compText || text;
       else if (/(^|,)"?ASINs"?(,|$)/m.test(text) && /(^|,)"?Rev, /m.test(text)) listText = listText || text;
       else if (/(^|,)"?ASIN"?(,|$)/m.test(text) && /(Parent Level Revenue|ASIN Revenue)/.test(text)) listText = listText || text;
