@@ -2190,7 +2190,7 @@ async function loadIdeen(){
         ${false ? `<div class="dd-nachtrag"><small>Suchvolumen fehlt. Zahl aus Helium 10 (Search Volume) eintragen:</small><div><input type="text" inputmode="numeric" placeholder="z. B. 18003" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div></div>` : ""}
         <div class="idee-knoepfe">
           <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">${ampel ? "Neuen Export hochladen" : "Export hochladen (Xray)"}</button>
-          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
+          ${ddPunktzahl(i) !== null ? (istProdukt(i) ? `<span class="rang-produkt">Ist in Produkte</span>` : ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button>` : ddSvFehlt(i) ? `<button type="button" class="dd-knopf dd-haupt" data-svfehlt="${esc(i.id)}">Suchvolumen eintragen, dann übernehmen</button>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`) : ""}
           ${i.status === "wird geprüft"
             ? `<button type="button" class="ghost dd-knopf" data-pin="aus" data-id="${esc(i.id)}">Fertig geprüft</button>`
             : `<button type="button" class="ghost dd-knopf pin" data-pin="an" data-id="${esc(i.id)}">Prüfe ich gerade</button>`}
@@ -2341,7 +2341,8 @@ function renderTop3(){
     return `<div class="top3-karte"><div class="top3-kopf"><span class="rang-nr ${n === 0 ? "top" : ""}">${n + 1}</span><b>${esc(i.text)}</b>${ddVorlaeufig(i) ? `<span class="sichtung">Erste Sichtung</span>` : ""}<span class="idee-status ampel-${amp}">${ddPunktzahl(i)} Punkte</span></div>
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
       ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
-      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
+      ${!ddVorlaeufig(i) && ddSvFehlt(i) ? `<div class="dd-sv"><small>Suchvolumen aus Magnet oder Cerebro, dann übernehmen:</small><input type="text" inputmode="numeric" placeholder="z. B. 12600" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>` : ""}
+      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : ddSvFehlt(i) ? "" : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
   }).join("") + "</div>";
 }
 // To-do: welche Suchbegriffe du als Nächstes in Helium 10 prüfst
@@ -2379,6 +2380,8 @@ function ddSuchbegriff(i){
 // Früher: Pflicht-Kasten „Niche Dive fehlt“. Jetzt reicht für die erste Sichtung die Suchliste, darum nie mehr offen
 function ddOffen(i){ return false; }
 // Erste Sichtung: nur aus einer Suchliste bewertet. Für die Übernahme als Produkt braucht es noch den Niche Dive
+// Vor der Übernahme als Produkt muss das Suchvolumen da sein (Keyword-Recherche mit Magnet oder Cerebro)
+function ddSvFehlt(i){ return /Suchvolumen unbekannt/.test(i.ergebnis || ""); }
 function ddVorlaeufig(i){ return /^Ampel /.test(i.ergebnis || "") && /(^| \| )(Gezählt|Achtung)/.test(i.ergebnis || "") && !/Quelle: Helium/.test(i.ergebnis || ""); }
 // Kurze Texte für Kacheln: Klammern, Nebensätze und lange Wendungen weg
 function ddKurz(t){
@@ -2419,6 +2422,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
   if (prod) {
     const idee = (ideenCache || []).find(x => String(x.id) === prod.dataset.produkt);
     if (!idee || istProdukt(idee)) return;
+    if (!ddVorlaeufig(idee) && ddSvFehlt(idee)) { ddMeldung("Vor der Übernahme bitte das Suchvolumen eintragen (Keyword-Recherche mit Magnet oder Cerebro).", "fehler"); return; }
     if (ddVorlaeufig(idee)) { ddMeldung("Vor der Übernahme bitte mit Helium 10 nachprüfen: Xray und Schwarze Box bei der Idee hochladen.", "fehler"); return; }
     const e2 = idee.ergebnis || "";
     const hole = re => (re.exec(e2) || [])[1];
@@ -2469,7 +2473,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("click", async e => {
     return;
   }
   const svKnopf = e.target.closest("[data-sv]");
-  if (svKnopf) {
+  if (svKnopf && !e.target.closest("#top3")) {
     const feld = el => el.dataset.svwert === svKnopf.dataset.sv;
     const input = [...document.querySelectorAll("[data-svwert]")].find(feld);
     // Nur Ziffern: „38,102“ und „38.102“ werden zu 38102
@@ -2525,6 +2529,30 @@ function suchvolumenNachtragen(idee, sv){
   el.addEventListener("toggle", () => { try { localStorage.setItem("ablaufZu", el.open ? "0" : "1"); } catch {} });
 })();
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
+// Suchvolumen speichern aus den Top 3 (Bereich Produkte)
+$("top3") && $("top3").addEventListener("click", async e => {
+  const svKnopf = e.target.closest("[data-sv]");
+  if (!svKnopf) return;
+  const input = [...document.querySelectorAll("#top3 [data-svwert]")].find(el => el.dataset.svwert === svKnopf.dataset.sv);
+  const sv = parseInt(String(input && input.value || "").replace(/\D/g, ""), 10);
+  if (!sv) { alert("Bitte eine Zahl eintragen, zum Beispiel 12600."); return; }
+  const idee = (ideenCache || []).find(i => String(i.id) === svKnopf.dataset.sv);
+  if (!idee) return;
+  const { error } = await sb.from("ideen").update(suchvolumenNachtragen(idee, sv)).eq("id", idee.id);
+  if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
+  loadIdeen();
+});
+// „Suchvolumen eintragen, dann übernehmen“: Details der Karte öffnen und ins Feld springen
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-svfehlt]");
+  if (!b) return;
+  const karte = b.closest(".idee-zeile");
+  const det = karte && [...karte.querySelectorAll("details")].find(d => d.querySelector("[data-svwert]"));
+  if (det) det.open = true;
+  const feld = karte && karte.querySelector("[data-svwert]");
+  if (feld) { feld.scrollIntoView({ block: "center", behavior: "smooth" }); feld.focus(); }
+  ddMeldung("Trag das Suchvolumen aus Magnet oder Cerebro ein und tippe auf Speichern. Danach kannst du übernehmen.", "ok");
+});
 // Idee verwerfen: Status „raus“, alter Stand wird gemerkt, damit „Rückgängig“ ihn zurückholt
 let ddLetzteVerworfen = null;
 async function ideeVerwerfen(id){
