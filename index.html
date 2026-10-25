@@ -2141,7 +2141,7 @@ $("ideenBereich") && $("ideenBereich").addEventListener("toggle", e => {
 function ddSuchbegriff(i){
   const s = /Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "");
   if (s) return s[1].trim();
-  return String(i.text || "").replace(/\s*\([^)]*\)/g, "").replace(/\s*\(Data Dive\)$/, "").toLowerCase().split(/[,–-]/)[0].trim().split(/s+/).slice(0, 4).join(" ");
+  return String(i.text || "").replace(/\s*\([^)]*\)/g, "").replace(/\s*\(Data Dive\)$/, "").toLowerCase().split(/[,–-]/)[0].trim().split(/\s+/).slice(0, 4).join(" ");
 }
 function ddOffen(i){ return /^Ampel (grün|gelb)/.test(i.ergebnis || "") && /Suchvolumen unbekannt/.test(i.ergebnis || ""); }
 // Kurze Texte für Kacheln: Klammern, Nebensätze und lange Wendungen weg
