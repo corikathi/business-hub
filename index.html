@@ -2638,6 +2638,19 @@ document.addEventListener("click", async e => {
     loadIdeen();
   }
 });
+// Dublette = dieselbe Nische, auch wenn Größe, Jahreszeit oder Marke im Titel anders ist
+const NISCHE_STOP = new Set(["winter","sommer","ganzjahres","ganzjahr","extra","warm","mit","fuer","fuers","aus","und","oder","in","the","von","set","stueck","zum","plan","original","testsieger","reissverschluss","baumwolle","beige","gruen","weiss","schwarz"]);
+const NISCHE_GLEICH_WORTE = {daunendecke:"daunen", daunenbettdecke:"daunen", federbett:"daunen", federbetten:"daunen", federn:"daunen", feder:"daunen", daunen:"daunen", bettdecke:"daunen", familienplaner:"familienplaner", family:"familienplaner", famaly:"familienplaner", familie:"familienplaner"};
+function nischeWoerter(t){
+  return new Set(String(t || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w.length > 2 && !/\d/.test(w) && !NISCHE_STOP.has(w)).map(w => NISCHE_GLEICH_WORTE[w] || w));
+}
+function nischeGleich(a, b){
+  const x = nischeWoerter(a), y = nischeWoerter(b);
+  if (!x.size || !y.size) return false;
+  const gemeinsam = [...x].filter(w => y.has(w)).length;
+  return gemeinsam / new Set([...x, ...y]).size >= 0.66;
+}
 // Helium-Liste: jede Zeile ist ein Suchbegriff mit Suchvolumen, Umsatz, Preis und Bewertungen.
 // Starke Begriffe werden zu neuen Ideen (Kategorie „Helium-Treffer“), vorhandene Ideen mit passendem Suchbegriff bekommen ihren Vorcheck.
 async function heliumListeVerarbeiten(dateien){
@@ -2690,7 +2703,7 @@ async function heliumListeVerarbeiten(dateien){
   const { data: alle } = await sb.from("ideen").select("text").limit(5000);
   const stark = zeilen.filter(x => gut(x) && !benutzt.has(x.phrase)).sort((a, b) => (b.umsatz || 0) - (a.umsatz || 0)).slice(0, 30);
   for (const x of stark) {
-    if ((alle || []).some(a => ideenGleich(a.text, x.phrase))) continue;
+    if ((alle || []).some(a => ideenGleich(a.text, x.phrase) || nischeGleich(a.text, x.phrase))) continue;
     const titel = x.phrase.charAt(0).toUpperCase() + x.phrase.slice(1);
     const { error } = await sb.from("ideen").insert({ text: titel, richtung: "Helium-Treffer", status: "bewertet",
       grund: "Prüfenswert: starker Umsatz laut Helium. Taugt das für deine Marke? Suchvolumen später mit Xray prüfen.",
