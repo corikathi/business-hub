@@ -2375,7 +2375,7 @@ function renderNaechste(){
   // Nur Ideen, die den Vorcheck auf Amazon bestanden haben und noch keine Ampel haben
   const offen = alle.filter(i => !hatAmpel(i) && /Vorcheck: bestanden/.test(i.ergebnis || ""))
     .sort((a, b) => (b.status === "wird geprüft") - (a.status === "wird geprüft") || String(b.created_at).localeCompare(String(a.created_at)))
-    .map(i => ({ i, was: i.richtung === "Helium-Treffer" ? "Aus der Schwarzen Box ✓, jetzt nur noch Xray" : "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
+    .map(i => ({ i, was: i.richtung === "Helium-Treffer" ? "Aus der Schwarzen Box ✓ · " + ddHeliumHerkunft(i) + " · nur noch Xray" : "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
   // Solange der Vorcheck noch läuft: mit Nicos prüfenswerten Ideen ohne Vorcheck auffüllen (durchgefallene bleiben draußen)
   if (offen.length < 5) offen.push(...alle.filter(i => !hatAmpel(i) && !/Vorcheck: /.test(i.ergebnis || "") && /^Prüfenswert/.test(i.grund || ""))
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
@@ -2389,6 +2389,11 @@ function renderNaechste(){
       <span class="dd-chip">${esc(begriff)}<button type="button" class="kopier" data-kopie="${esc(begriff)}" title="Suchbegriff kopieren" aria-label="Suchbegriff kopieren">⧉</button></span>
       <button type="button" class="ghost dd-knopf" data-dd="${esc(i.id)}">Hochladen</button><button type="button" class="ghost dd-knopf verwerfen" data-weg="${esc(i.id)}" title="Idee verwerfen">✕</button></div>`;
   }).join("") + "</div>";
+}
+// Kategorie und Dateinummer der Schwarzen Box, z. B. „Haustier · Datei (3)“
+function ddHeliumHerkunft(i){
+  const k = /Kategorie: ([^·|]+)/.exec(i.ergebnis || ""), d = /(Datei [^·|]+)/.exec(i.ergebnis || "");
+  return [k ? k[1].trim() : "Kategorie unbekannt", d ? d[1].trim() : ""].filter(Boolean).join(" · ");
 }
 function istProdukt(i){ return products.some(p => p.auftrag === "Idee " + i.id || p.name === i.text); }
 // Suchbegriff aus dem Ideentitel: die ersten bedeutungsvollen Wörter, ohne Klammern und Zusätze
@@ -2641,6 +2646,7 @@ async function heliumListeVerarbeiten(dateien){
   const passt = x => !tabu.test(x.phrase + " " + x.kat) && !marken.test(x.phrase) && !modell(x) && !/^amazon$/i.test(x.versand.trim()) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4 && x.phrase.split(/s+/).some(w => w.length >= 5);
   const gut = x => passt(x) && (x.sv || 0) >= 100 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 500);
   const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
+  const listeNr = (() => { const m = /((d+))/.exec(dateien[0]?.name || ""); return m ? "Datei (" + m[1] + ")" : "Datei ohne Nummer"; })();
   const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
   const norm = t => String(t || "").toLowerCase().replace(/\s*\(amazon-vorschlag\)/, "").replace(/[^a-zäöüß0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
   // a) Vorhandene Ideen ohne Ampel: passender Begriff in der Liste?
@@ -2667,7 +2673,7 @@ async function heliumListeVerarbeiten(dateien){
     const titel = x.phrase.charAt(0).toUpperCase() + x.phrase.slice(1);
     const { error } = await sb.from("ideen").insert({ text: titel, richtung: "Helium-Treffer", status: "bewertet",
       grund: "Prüfenswert: starker Umsatz laut Helium. Taugt das für deine Marke? Suchvolumen später mit Xray prüfen.",
-      ergebnis: `ca. ${Math.round(x.preis || 0)} €, laut Helium · Suchbegriff: ${x.phrase} · Vorcheck: ${beschreibung(x)}` });
+      ergebnis: `ca. ${Math.round(x.preis || 0)} €, laut Helium · Suchbegriff: ${x.phrase} · Kategorie: ${x.kat || "unbekannt"} · ${listeNr} · Vorcheck: ${beschreibung(x)}` });
     if (!error) { neu++; (alle || []).push({ text: titel }); }
   }
   const starkGesamt = zeilen.filter(gut).length, aussortiert = zeilen.filter(x => !passt(x)).length;
