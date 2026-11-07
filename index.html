@@ -2376,6 +2376,10 @@ function renderNaechste(){
   const offen = alle.filter(i => !hatAmpel(i) && /Vorcheck: bestanden/.test(i.ergebnis || ""))
     .sort((a, b) => (b.status === "wird geprüft") - (a.status === "wird geprüft") || String(b.created_at).localeCompare(String(a.created_at)))
     .map(i => ({ i, was: "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
+  // Solange der Vorcheck noch läuft: mit Nicos prüfenswerten Ideen ohne Vorcheck auffüllen (durchgefallene bleiben draußen)
+  if (offen.length < 5) offen.push(...alle.filter(i => !hatAmpel(i) && !/Vorcheck: /.test(i.ergebnis || "") && /^Prüfenswert/.test(i.grund || ""))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .map(i => ({ i, was: "noch ohne Vorcheck, direkt mit Xray und Schwarze Box prüfen" })));
   const gesehen = new Set();
   const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 5);
   if (!liste.length) { el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4><small class="muted">Noch keine Idee hat den Vorcheck bestanden. Nico prüft im Hintergrund weiter und meldet sich auf Telegram, wenn er fertig ist.</small></div>`; return; }
