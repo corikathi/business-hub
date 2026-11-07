@@ -2375,7 +2375,7 @@ function renderNaechste(){
   // Nur Ideen, die den Vorcheck auf Amazon bestanden haben und noch keine Ampel haben
   const offen = alle.filter(i => !hatAmpel(i) && /Vorcheck: bestanden/.test(i.ergebnis || ""))
     .sort((a, b) => (b.status === "wird geprüft") - (a.status === "wird geprüft") || String(b.created_at).localeCompare(String(a.created_at)))
-    .map(i => ({ i, was: "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
+    .map(i => ({ i, was: i.richtung === "Helium-Treffer" ? "Aus der Schwarzen Box ✓, jetzt nur noch Xray" : "Vorcheck bestanden ✓, jetzt Xray und Schwarze Box" }));
   // Solange der Vorcheck noch läuft: mit Nicos prüfenswerten Ideen ohne Vorcheck auffüllen (durchgefallene bleiben draußen)
   if (offen.length < 5) offen.push(...alle.filter(i => !hatAmpel(i) && !/Vorcheck: /.test(i.ergebnis || "") && /^Prüfenswert/.test(i.grund || ""))
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
