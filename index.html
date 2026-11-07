@@ -2629,14 +2629,14 @@ async function heliumListeVerarbeiten(dateien){
   const zahl = s => { const n = parseFloat(String(s ?? "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
   const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "", groesse: iG >= 0 ? r[iG] || "" : "" }));
   // Deine Regeln, für die Liste etwas lockerer beim Preis (Sets heben den Preis später auf 50 €)
-  const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel/i;
+  const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel|elektr|akku|heiz|motor|lampe|pumpe|toaster|gerät|test|diät|protein|nahrung|sex|puppe|brüste|catsuit|muschi|vaporizer|parfum|creme|perücke|wig|kalender|weihnacht|kürbis|trikot|jacke|helm|messer|hörhilfe|einbauküche|backform|backofen|geschirr|pool|rasierer/i; // Kinder, Elektro/Akku, Gesundheit, Kosmetik, Saison, Lebensmittelkontakt, Schutzausrüstung
   // Kategorien, die nicht zu deinen Regeln passen: Technik und Großgeräte (reguliert, teuer), Medien, Kleidung (viele Größen),
   // Kosmetik und Lebensmittel (reguliert), Auto und Industrie
   const tabuKategorie = /elektro|computer|elektronik|kamera|bücher|dvd|games|software|musik|spielzeug|baby|lebensmittel|beauty|fashion|auto & motorrad|gewerbe|industrie|beleuchtung/i;
   const woerter = x => x.phrase.split(/\s+/).filter(Boolean).length;
   // Nur kleine Pakete (keine Übergröße), nischige Suchbegriffe mit 2 bis 4 Wörtern (einzelne Wörter sind oft Markennamen)
   const passt = x => !tabu.test(x.phrase + " " + x.kat) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4;
-  const gut = x => passt(x) && (x.sv || 0) >= 1000 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 800);
+  const gut = x => passt(x) && (x.sv || 0) >= 100 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 500);
   const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
   const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
   const norm = t => String(t || "").toLowerCase().replace(/\s*\(amazon-vorschlag\)/, "").replace(/[^a-zäöüß0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -2663,7 +2663,7 @@ async function heliumListeVerarbeiten(dateien){
     if ((alle || []).some(a => ideenGleich(a.text, x.phrase))) continue;
     const titel = x.phrase.charAt(0).toUpperCase() + x.phrase.slice(1);
     const { error } = await sb.from("ideen").insert({ text: titel, richtung: "Helium-Treffer", status: "bewertet",
-      grund: "Prüfenswert: starke Zahlen laut Helium. Taugt das für deine Marke?",
+      grund: "Prüfenswert: starker Umsatz laut Helium. Taugt das für deine Marke? Suchvolumen später mit Xray prüfen.",
       ergebnis: `ca. ${Math.round(x.preis || 0)} €, laut Helium · Suchbegriff: ${x.phrase} · Vorcheck: ${beschreibung(x)}` });
     if (!error) { neu++; (alle || []).push({ text: titel }); }
   }
