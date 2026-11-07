@@ -2625,17 +2625,20 @@ async function heliumListeVerarbeiten(dateien){
   const z = ddCsv(text), k = z.findIndex(r => r.some(c => c.trim() === "Phrase"));
   if (k < 0) throw new Error("Das ist keine Helium-Liste. Nimm den Export aus der Schwarzen Box, Reiter „Schlüsselwörter“.");
   const kopf = z[k], sp = n => kopf.findIndex(c => c.trim() === n);
-  const iP = sp("Phrase"), iSV = sp("Search Volume"), iPr = sp("Preis"), iU = sp("Monatlicher Umsatz"), iR = sp("Review Count"), iK = sp("Kategorie"), iG = sp("Size Tier");
+  const iP = sp("Phrase"), iSV = sp("Search Volume"), iPr = sp("Preis"), iU = sp("Monatlicher Umsatz"), iR = sp("Review Count"), iK = sp("Kategorie"), iG = sp("Size Tier"), iF = sp("Fulfillment");
   const zahl = s => { const n = parseFloat(String(s ?? "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
-  const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "", groesse: iG >= 0 ? r[iG] || "" : "" }));
+  const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "", groesse: iG >= 0 ? r[iG] || "" : "", versand: iF >= 0 ? r[iF] || "" : "" }));
   // Deine Regeln, für die Liste etwas lockerer beim Preis (Sets heben den Preis später auf 50 €)
-  const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel|elektr|akku|heiz|motor|lampe|pumpe|toaster|gerät|test|diät|protein|nahrung|sex|puppe|brüste|catsuit|muschi|vaporizer|parfum|creme|perücke|wig|kalender|weihnacht|kürbis|trikot|jacke|helm|messer|hörhilfe|einbauküche|backform|backofen|geschirr|pool|rasierer/i; // Kinder, Elektro/Akku, Gesundheit, Kosmetik, Saison, Lebensmittelkontakt, Schutzausrüstung
+  const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel|elektr|akku|heiz|motor|lampe|pumpe|toaster|gerät|test|diät|protein|nahrung|sex|puppe|brüste|catsuit|muschi|vaporizer|parfum|creme|perücke|wig|kalender|weihnacht|kürbis|trikot|jacke|helm|messer|hörhilfe|einbauküche|backform|backofen|geschirr|pool|rasierer|roboter|sauger|vibrator|mast[uro]|blowj|torso|liebes|erotik|machine|maschine|station|computer|licht|kamera|sensor|wetter|smart|föhn|halloween|ozon|filter|solar|dart|nutrition|mental|pfanne|backen|wasserspender|flasche/i; // Kinder, Elektro/Akku, Gesundheit, Kosmetik, Saison, Lebensmittelkontakt, Schutzausrüstung
   // Kategorien, die nicht zu deinen Regeln passen: Technik und Großgeräte (reguliert, teuer), Medien, Kleidung (viele Größen),
   // Kosmetik und Lebensmittel (reguliert), Auto und Industrie
   const tabuKategorie = /elektro|computer|elektronik|kamera|bücher|dvd|games|software|musik|spielzeug|baby|lebensmittel|beauty|fashion|auto & motorrad|gewerbe|industrie|beleuchtung/i;
+  // Bekannte Marken: gegen die kommt man nicht an. Modellnummern (i9000, ws90, 24v) sind ebenfalls Marken-Suchen.
+  const marken = /philips|garmin|dyson|uvex|abus|ecovacs|mamibot|nomite|wolkenkraft|purize|magicshine|arizer|ecowitt|sansi|orthomol|bosch|segway|stoov|ergon|caso|trelock|stihl|gardena|schiesser|fellow|lefaya|kohlburg|grohe|libre|hurtta|bliz|zeiss|shelly|einhell|dampfente|petfood|aperol|littler|sauron|monzana|makita|shark|dreame|catrice|deuter|thermarest|joop|ikea|ektorp|tchibo|wmf|fissler|tefal|leifheit|vileda|kärcher|karcher|nike|adidas|puma|jako|decathlon|lego|playmobil|disney|marvel|apple|samsung|xiaomi|anker|bose|sony|braun|rowenta|severin|melitta|krups|delonghi|siemens|miele|liebherr|lenovo|guess|tommy|hilfiger|lacoste|ravensburger|schleich|haba|tonies|feuerhand|jochen schweizer/i;
+  const modell = x => x.phrase.toLowerCase().split(/\s+/).some(t => /[a-zäöü]/.test(t) && /\d/.test(t) && !/^\d+x\d+$/.test(t) && !/^\d+(mm|cm|m|kg|g|l|er)$/.test(t));
   const woerter = x => x.phrase.split(/\s+/).filter(Boolean).length;
   // Nur kleine Pakete (keine Übergröße), nischige Suchbegriffe mit 2 bis 4 Wörtern (einzelne Wörter sind oft Markennamen)
-  const passt = x => !tabu.test(x.phrase + " " + x.kat) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4;
+  const passt = x => !tabu.test(x.phrase + " " + x.kat) && !marken.test(x.phrase) && !modell(x) && !/^amazon$/i.test(x.versand.trim()) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4;
   const gut = x => passt(x) && (x.sv || 0) >= 100 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 500);
   const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
   const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
@@ -2658,7 +2661,7 @@ async function heliumListeVerarbeiten(dateien){
   }
   // b) Starke Begriffe, die noch keine Idee sind: als neue Ideen anlegen (höchstens 20 pro Liste, keine Doppelten)
   const { data: alle } = await sb.from("ideen").select("text").limit(5000);
-  const stark = zeilen.filter(x => gut(x) && !benutzt.has(x.phrase)).sort((a, b) => (b.umsatz || 0) - (a.umsatz || 0)).slice(0, 20);
+  const stark = zeilen.filter(x => gut(x) && !benutzt.has(x.phrase)).sort((a, b) => (b.umsatz || 0) - (a.umsatz || 0)).slice(0, 30);
   for (const x of stark) {
     if ((alle || []).some(a => ideenGleich(a.text, x.phrase))) continue;
     const titel = x.phrase.charAt(0).toUpperCase() + x.phrase.slice(1);
