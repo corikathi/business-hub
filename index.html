@@ -836,16 +836,15 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
             <div class="schritt s3">
               <div class="schritt-kopf"><span>3</span><div><b>Deine Ideen</b><small>Was Nico gefunden hat</small></div></div>
               <details class="ablauf" id="ablaufHelium" open>
-                <summary>So prüfst du eine Idee mit Helium 10</summary>
+                <summary>So findest du Produkte (Helium 10)</summary>
                 <ol>
-                  <li><b>Idee wählen:</b> In der Liste unten eine grüne Idee nehmen und den <b>Suchbegriff</b> mit ⧉ kopieren. Eigene Ideen trägst du oben unter „Eigene Idee hinzufügen“ ein.</li>
-                  <li><b>Suchvolumen (Schwarze Box):</b> Reiter „Schlüsselwörter“, oben <b>amazon.de</b>. <b>Alle Filter leer</b>, nur den Begriff in die „Stichwortsuche“. Suche, dann <b>Export</b>.</li>
-                  <li><b>Konkurrenz (Xray):</b> Auf amazon.de den Begriff suchen, oben im Browser das Helium-Symbol, <b>Xray</b> öffnen, dann <b>Export</b>.</li>
-                  <li><b>Hochladen:</b> Bei der Idee auf „Export hochladen“ tippen und <b>beide Dateien zusammen</b> auswählen. Der Hub rechnet die Ampel.</li>
-                  <li><b>Ergebnis:</b> Grün und gelb landen in der <b>Rangliste</b>, die besten drei oben bei <b>Produkte</b>. Nico liest danach von selbst die Bewertungen.</li>
-                  <li><b>Übernehmen:</b> Überzeugt dich eine Idee, bei Produkte auf „Als Produkt übernehmen“. Dann geht es mit Hersteller und Kalkulation weiter.</li>
+                  <li><b>Helium sucht:</b> Schwarze Box, Reiter „Schlüsselwörter“, <b>amazon.de</b>, deine gespeicherten Filter, Suche, <b>Export</b>. Keine Stichwortsuche, dann sucht Helium über alle Bereiche.</li>
+                  <li><b>Hochladen:</b> Unten auf <b>„Helium-Liste hochladen“</b> tippen. Der Hub legt aus den starken Suchbegriffen Ideen an, mit echten Zahlen, ohne Kinderartikel.</li>
+                  <li><b>Aussortieren:</b> In „Als Nächstes prüfen“ nur kurz schauen: Taugt das für eine Marke? Nein → ✕. Ja → weiter.</li>
+                  <li><b>Konkurrenz (Xray):</b> Für die guten auf amazon.de suchen, Xray, Export, bei der Idee hochladen. Der Hub gibt die Ampel, Nico liest danach die Bewertungen.</li>
+                  <li><b>Entscheiden:</b> Die besten stehen in der Rangliste und oben bei Produkte. Gefällt dir eine: Suchvolumen eintragen, als Produkt übernehmen, Hersteller anfragen.</li>
                 </ol>
-                <small>Neue Nischen ohne Nicos Ideen: In der Schwarzen Box die Filter setzen (Suchvolumen ab 5.000, Umsatz ab 10.000, Preis ab 50, Wortanzahl 2 bis 4) und „Filter speichern“.</small>
+                <small>Am besten jede Woche einmal eine neue Helium-Liste hochladen. Kommt bei den Filtern nichts, lockere sie etwas (zum Beispiel Preis ab 35, Suchvolumen ab 1.000).</small>
               </details>
               <div id="naechste"></div>
               <div id="ddStatus" class="dd-status" hidden></div>
@@ -2141,7 +2140,7 @@ async function loadIdeen(){
   const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
   const el = $("ideenBereich");
   if (!el) return;
-  const hochladen = `<div class="dd-leiste"><button type="button" class="ghost" data-dd="neu">Export hochladen (neue Nische)</button></div>`;
+  const hochladen = `<div class="dd-leiste"><button type="button" class="dd-knopf dd-haupt" data-dd="helium-liste">Helium-Liste hochladen (Schwarze Box)</button> <button type="button" class="ghost" data-dd="neu">Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   ideenCache = data || [];
   renderTop3();
@@ -2612,6 +2611,59 @@ document.addEventListener("click", async e => {
     loadIdeen();
   }
 });
+// Helium-Liste: jede Zeile ist ein Suchbegriff mit Suchvolumen, Umsatz, Preis und Bewertungen.
+// Starke Begriffe werden zu neuen Ideen (Kategorie „Helium-Treffer“), vorhandene Ideen mit passendem Suchbegriff bekommen ihren Vorcheck.
+async function heliumListeVerarbeiten(dateien){
+  ddMeldung("Helium-Liste wird gelesen …", "");
+  let text = "";
+  for (const d of dateien) {
+    if (/\.xlsx?$/i.test(d.name)) { const wb = XLSX.read(await d.arrayBuffer(), { type: "array" }); text = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]); }
+    else text = await d.text();
+    if (/(^|,)"?Phrase"?(,|$)/m.test(text)) break;
+  }
+  const z = ddCsv(text), k = z.findIndex(r => r.some(c => c.trim() === "Phrase"));
+  if (k < 0) throw new Error("Das ist keine Helium-Liste. Nimm den Export aus der Schwarzen Box, Reiter „Schlüsselwörter“.");
+  const kopf = z[k], sp = n => kopf.findIndex(c => c.trim() === n);
+  const iP = sp("Phrase"), iSV = sp("Search Volume"), iPr = sp("Preis"), iU = sp("Monatlicher Umsatz"), iR = sp("Review Count"), iK = sp("Kategorie");
+  const zahl = s => { const n = parseFloat(String(s ?? "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
+  const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "" }));
+  // Deine Regeln, für die Liste etwas lockerer beim Preis (Sets heben den Preis später auf 50 €)
+  const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel/i;
+  const gut = x => !tabu.test(x.phrase + " " + x.kat) && (x.sv || 0) >= 1000 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 800);
+  const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
+  const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
+  const norm = t => String(t || "").toLowerCase().replace(/\s*\(amazon-vorschlag\)/, "").replace(/[^a-zäöüß0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  // a) Vorhandene Ideen ohne Ampel: passender Begriff in der Liste?
+  let vorgeprueft = 0, neu = 0;
+  const benutzt = new Set();
+  for (const i of (ideenCache || [])) {
+    if (/^Ampel /.test(i.ergebnis || "")) continue;
+    const s = norm((/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1]);
+    if (!s) continue;
+    const w = s.split(" ");
+    const treffer = zeilen.filter(x => { const p = norm(x.phrase).split(" "); return w.every(t => p.includes(t)); }).sort((a, b) => (b.sv || 0) - (a.sv || 0))[0];
+    if (!treffer) continue;
+    benutzt.add(treffer.phrase);
+    const upd = { ergebnis: (i.ergebnis || "").replace(/ · Vorcheck: [^·|]*/, "") + " · Vorcheck: " + beschreibung(treffer) };
+    if (!gut(treffer) && i.status !== "wird geprüft") upd.grund = "Mit Haken: laut Helium-Liste zu schwach";
+    const { error } = await sb.from("ideen").update(upd).eq("id", i.id);
+    if (!error) vorgeprueft++;
+  }
+  // b) Starke Begriffe, die noch keine Idee sind: als neue Ideen anlegen (höchstens 20 pro Liste, keine Doppelten)
+  const { data: alle } = await sb.from("ideen").select("text").limit(5000);
+  const stark = zeilen.filter(x => gut(x) && !benutzt.has(x.phrase)).sort((a, b) => (b.umsatz || 0) - (a.umsatz || 0)).slice(0, 20);
+  for (const x of stark) {
+    if ((alle || []).some(a => ideenGleich(a.text, x.phrase))) continue;
+    const titel = x.phrase.charAt(0).toUpperCase() + x.phrase.slice(1);
+    const { error } = await sb.from("ideen").insert({ text: titel, richtung: "Helium-Treffer", status: "bewertet",
+      grund: "Prüfenswert: starke Zahlen laut Helium. Taugt das für deine Marke?",
+      ergebnis: `ca. ${Math.round(x.preis || 0)} €, laut Helium · Suchbegriff: ${x.phrase} · Vorcheck: ${beschreibung(x)}` });
+    if (!error) { neu++; (alle || []).push({ text: titel }); }
+  }
+  const starkGesamt = zeilen.filter(gut).length;
+  ddMeldung(`Helium-Liste gelesen: ${zeilen.length} Suchbegriffe, davon ${starkGesamt} mit starken Zahlen. ${neu} neue Ideen angelegt (Kategorie „Helium-Treffer“), ${vorgeprueft} vorhandene Ideen vorgeprüft. Sie stehen jetzt oben unter „Als Nächstes prüfen“. Was nicht zu einer Marke passt: ✕.`, "ok");
+  loadIdeen();
+}
 function ddMeldung(text, art){
   const el = $("ddStatus");
   if (!el) return;
@@ -2852,6 +2904,10 @@ function nischeAuswerten(compText, kwText, listText, dateiname, hinweis, suchbeg
 ddInput.addEventListener("change", async () => {
   const dateien = [...(ddInput.files || [])];
   if (!dateien.length || !ddZiel) return;
+  if (ddZiel === "helium-liste") {
+    try { await heliumListeVerarbeiten(dateien); } catch (err) { ddMeldung("Hat nicht geklappt: " + err.message, "fehler"); }
+    return;
+  }
   ddMeldung(`Wird ausgewertet: ${dateien.map(d => d.name).join(", ")} …`, "");
   try {
     // Jede Datei als Text (CSV) lesen; Excel wird in CSV umgewandelt. Welche Tabelle es ist, erkennt der Inhalt.
