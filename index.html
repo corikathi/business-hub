@@ -2639,7 +2639,7 @@ document.addEventListener("click", async e => {
   }
 });
 // Dublette = dieselbe Nische, auch wenn Größe, Jahreszeit oder Marke im Titel anders ist
-const NISCHE_STOP = new Set(["winter","sommer","ganzjahres","ganzjahr","extra","warm","mit","fuer","fuers","aus","und","oder","in","the","von","set","stueck","zum","plan","original","testsieger","reissverschluss","baumwolle","beige","gruen","weiss","schwarz"]);
+const NISCHE_STOP = new Set(["winter","sommer","winterdecke","sommerdecke","decke","ganzjahres","ganzjahr","extra","warm","mit","fuer","fuers","aus","und","oder","in","the","von","set","stueck","zum","plan","original","testsieger","reissverschluss","baumwolle","beige","gruen","weiss","schwarz"]);
 const NISCHE_GLEICH_WORTE = {daunendecke:"daunen", daunenbettdecke:"daunen", federbett:"daunen", federbetten:"daunen", federn:"daunen", feder:"daunen", daunen:"daunen", bettdecke:"daunen", familienplaner:"familienplaner", family:"familienplaner", famaly:"familienplaner", familie:"familienplaner"};
 function nischeWoerter(t){
   return new Set(String(t || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
