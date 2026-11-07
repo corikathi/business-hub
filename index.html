@@ -814,7 +814,8 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
         <div class="nico-layout">
           <div class="nico-links">
             <div id="nicoKarte"></div>
-            <div class="schritt s1">
+            <!-- Ideen anfordern (Generator) ist ausgeblendet, seit die Ideen aus der Helium-Liste kommen. Daten bleiben erhalten. -->
+            <div class="schritt s1" hidden>
               <div class="schritt-kopf"><span>1</span><div><b>Ideen anfordern</b><small>Preis und Kategorie wählen, dann starten</small></div></div>
               <div id="ideenGenerator"></div>
             </div>
@@ -830,11 +831,11 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
           </div>
           <div class="nico-rechts">
             <div class="schritt s2">
-              <div class="schritt-kopf"><span>2</span><div><b>Nico arbeitet</b><small>Deine Anfragen und ihr Stand</small></div></div>
+              <div class="schritt-kopf"><span>1</span><div><b>Nico arbeitet</b><small>Deine Anfragen und ihr Stand</small></div></div>
               <div id="auftraege"></div>
             </div>
             <div class="schritt s3">
-              <div class="schritt-kopf"><span>3</span><div><b>Deine Ideen</b><small>Was Nico gefunden hat</small></div></div>
+              <div class="schritt-kopf"><span>2</span><div><b>Deine Ideen</b><small>Aus der Helium-Liste, von dir und von Nico</small></div></div>
               <details class="ablauf" id="ablaufHelium" open>
                 <summary>So findest du Produkte (Helium 10)</summary>
                 <ol>
