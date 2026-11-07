@@ -2646,7 +2646,7 @@ async function heliumListeVerarbeiten(dateien){
   const passt = x => !tabu.test(x.phrase + " " + x.kat) && !marken.test(x.phrase) && !modell(x) && !/^amazon$/i.test(x.versand.trim()) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4 && x.phrase.split(/s+/).some(w => w.length >= 5);
   const gut = x => passt(x) && (x.sv || 0) >= 100 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 500);
   const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
-  const listeNr = (() => { const m = /((d+))/.exec(dateien[0]?.name || ""); return m ? "Datei (" + m[1] + ")" : "Datei ohne Nummer"; })();
+  const listeNr = (() => { const m = /\((\d+)\)/.exec(dateien[0]?.name || ""); return m ? "Datei (" + m[1] + ")" : "Datei ohne Nummer"; })();
   const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
   const norm = t => String(t || "").toLowerCase().replace(/\s*\(amazon-vorschlag\)/, "").replace(/[^a-zäöüß0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
   // a) Vorhandene Ideen ohne Ampel: passender Begriff in der Liste?
