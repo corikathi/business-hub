@@ -851,6 +851,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
               <div id="naechste"></div>
               <div id="ddStatus" class="dd-status" hidden></div>
               <div id="ideenBereich"></div>
+              <div id="saisonLink"></div>
             </div>
           </div>
         </div>
@@ -2133,17 +2134,24 @@ const IDEEN_STATUS = {neu: "Neu", "wird geprüft": "Wird geprüft", bewertet: "B
 let ideenOffen = null;
 let ideenTab = null;
 let ideenCache = [];
+let zeigeSaison = false;
+$("saisonLink") && $("saisonLink").addEventListener("click", e => { if (!e.target.closest("#saisonUmschalten")) return; zeigeSaison = !zeigeSaison; loadIdeen(); });
 async function loadIdeen(){
   // Nicht neu zeichnen, während du in der Ideen-Liste etwas eintippst
   const fokus = document.activeElement;
   if (fokus && fokus.closest && fokus.closest("#ideenBereich") && fokus.tagName === "INPUT") return;
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
-  const { data, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
+  const { data: alleDaten, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
+  // Saisonware (Grund beginnt mit „Saison“) bleibt in der Datenbank, ist aber ausgeblendet, bis du „Saisonware anzeigen“ tippst
+  const istSaison = i => /^Saison/.test(i.grund || "");
+  const saisonAnzahl = (alleDaten || []).filter(istSaison).length;
+  const data = zeigeSaison ? alleDaten : (alleDaten || []).filter(i => !istSaison(i));
   const el = $("ideenBereich");
   if (!el) return;
   const hochladen = `<div class="dd-leiste"><button type="button" class="dd-knopf dd-haupt" data-dd="helium-liste">Helium-Liste hochladen (Schwarze Box)</button> <button type="button" class="ghost" data-dd="neu">Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   ideenCache = data || [];
+  if ($("saisonLink")) $("saisonLink").innerHTML = saisonAnzahl ? '<button type="button" class="ghost" id="saisonUmschalten">' + (zeigeSaison ? "Saisonware ausblenden" : "Saisonware anzeigen (" + saisonAnzahl + ")") + "</button>" : "";
   renderTop3();
   renderNaechste();
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
