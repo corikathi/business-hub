@@ -2625,12 +2625,18 @@ async function heliumListeVerarbeiten(dateien){
   const z = ddCsv(text), k = z.findIndex(r => r.some(c => c.trim() === "Phrase"));
   if (k < 0) throw new Error("Das ist keine Helium-Liste. Nimm den Export aus der Schwarzen Box, Reiter „Schlüsselwörter“.");
   const kopf = z[k], sp = n => kopf.findIndex(c => c.trim() === n);
-  const iP = sp("Phrase"), iSV = sp("Search Volume"), iPr = sp("Preis"), iU = sp("Monatlicher Umsatz"), iR = sp("Review Count"), iK = sp("Kategorie");
+  const iP = sp("Phrase"), iSV = sp("Search Volume"), iPr = sp("Preis"), iU = sp("Monatlicher Umsatz"), iR = sp("Review Count"), iK = sp("Kategorie"), iG = sp("Size Tier");
   const zahl = s => { const n = parseFloat(String(s ?? "").replace(/[€%\s]/g, "").replace(/,/g, "")); return isNaN(n) ? null : n; };
-  const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "" }));
+  const zeilen = z.slice(k + 1).filter(r => r[iP]).map(r => ({ phrase: r[iP].trim(), sv: zahl(r[iSV]), preis: zahl(r[iPr]), umsatz: zahl(r[iU]), bew: zahl(r[iR]), kat: iK >= 0 ? r[iK] || "" : "", groesse: iG >= 0 ? r[iG] || "" : "" }));
   // Deine Regeln, für die Liste etwas lockerer beim Preis (Sets heben den Preis später auf 50 €)
   const tabu = /kinder|baby|kleinkind|spielzeug|schnuller|windel/i;
-  const gut = x => !tabu.test(x.phrase + " " + x.kat) && (x.sv || 0) >= 1000 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 800);
+  // Kategorien, die nicht zu deinen Regeln passen: Technik und Großgeräte (reguliert, teuer), Medien, Kleidung (viele Größen),
+  // Kosmetik und Lebensmittel (reguliert), Auto und Industrie
+  const tabuKategorie = /elektro|computer|elektronik|kamera|bücher|dvd|games|software|musik|spielzeug|baby|lebensmittel|beauty|fashion|auto & motorrad|gewerbe|industrie|beleuchtung/i;
+  const woerter = x => x.phrase.split(/\s+/).filter(Boolean).length;
+  // Nur kleine Pakete (keine Übergröße), nischige Suchbegriffe mit 2 bis 4 Wörtern (einzelne Wörter sind oft Markennamen)
+  const passt = x => !tabu.test(x.phrase + " " + x.kat) && !tabuKategorie.test(x.kat) && !/oversize/i.test(x.groesse) && woerter(x) >= 2 && woerter(x) <= 4;
+  const gut = x => passt(x) && (x.sv || 0) >= 1000 && (x.umsatz || 0) >= 10000 && (x.preis || 0) >= 40 && (x.bew == null || x.bew <= 800);
   const euro = n => Math.round(n || 0).toLocaleString("de-DE") + " €";
   const beschreibung = x => `${gut(x) ? "bestanden" : "nicht bestanden"} (Helium: ${(x.sv ?? 0).toLocaleString("de-DE")} Suchen, ca. ${euro(x.umsatz)} Umsatz, Ø ${x.preis != null ? x.preis.toFixed(2).replace(".", ",") : "?"} €, Ø ${x.bew ?? "?"} Bewertungen)`;
   const norm = t => String(t || "").toLowerCase().replace(/\s*\(amazon-vorschlag\)/, "").replace(/[^a-zäöüß0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -2661,8 +2667,8 @@ async function heliumListeVerarbeiten(dateien){
       ergebnis: `ca. ${Math.round(x.preis || 0)} €, laut Helium · Suchbegriff: ${x.phrase} · Vorcheck: ${beschreibung(x)}` });
     if (!error) { neu++; (alle || []).push({ text: titel }); }
   }
-  const starkGesamt = zeilen.filter(gut).length;
-  ddMeldung(`Helium-Liste gelesen: ${zeilen.length} Suchbegriffe, davon ${starkGesamt} mit starken Zahlen. ${neu} neue Ideen angelegt (Kategorie „Helium-Treffer“), ${vorgeprueft} vorhandene Ideen vorgeprüft. Sie stehen jetzt oben unter „Als Nächstes prüfen“. Was nicht zu einer Marke passt: ✕.`, "ok");
+  const starkGesamt = zeilen.filter(gut).length, aussortiert = zeilen.filter(x => !passt(x)).length;
+  ddMeldung(`Helium-Liste gelesen: ${zeilen.length} Suchbegriffe. ${aussortiert} passen nicht zu deinen Regeln (Technik, Kleidung, Übergröße, Marken, Kinder), ${starkGesamt} haben starke Zahlen. ${neu} neue Ideen angelegt (Kategorie „Helium-Treffer“), ${vorgeprueft} vorhandene Ideen vorgeprüft. Sie stehen jetzt oben unter „Als Nächstes prüfen“. Was nicht zu einer Marke passt: ✕.`, "ok");
   loadIdeen();
 }
 function ddMeldung(text, art){
