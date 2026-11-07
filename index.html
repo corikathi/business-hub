@@ -845,6 +845,7 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
                   <li><b>Konkurrenz (Xray):</b> Für die guten auf amazon.de suchen, Xray, Export, bei der Idee hochladen. Der Hub gibt die Ampel, Nico liest danach die Bewertungen.</li>
                   <li><b>Entscheiden:</b> Die besten stehen in der Rangliste und oben bei Produkte. Gefällt dir eine: Suchvolumen eintragen, als Produkt übernehmen, Hersteller anfragen.</li>
                 </ol>
+                <div id="filterStand"></div>
                 <small>Am besten jede Woche einmal eine neue Helium-Liste hochladen. Kommt bei den Filtern nichts, lockere sie etwas (zum Beispiel Preis ab 35, Suchvolumen ab 1.000).</small>
               </details>
               <div id="naechste"></div>
@@ -2365,9 +2366,30 @@ function renderTop3(){
       <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : ddSvFehlt(i) ? "" : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
   }).join("") + "</div>";
 }
+// Checkliste der 7 Helium-Filter: ein Haken, sobald eine Liste mit diesem Filter Ideen geliefert hat
+function renderFilterStand(){
+  const el = $("filterStand");
+  if (!el) return;
+  const helium = (ideenCache || []).filter(i => i.richtung === "Helium-Treffer");
+  const preisVon = i => { const m = /ca\. (\d+)/.exec(i.ergebnis || ""); return m ? Number(m[1]) : 0; };
+  const katVon = i => { const m = /Kategorie: ([^·|]+)/.exec(i.ergebnis || ""); return m ? m[1].trim() : ""; };
+  const hat = (kat, passt) => helium.some(i => katVon(i) === kat && passt(preisVon(i)));
+  const alle = () => true;
+  const filter = [
+    ["C1 Haustier", "Haustier", alle],
+    ["C2 Sport", "Sport & Freizeit", alle],
+    ["C3 Küche/Wohnen 40–70", "Küche, Haushalt & Wohnen", p => p < 70],
+    ["C4 Küche/Wohnen 70+", "Küche, Haushalt & Wohnen", p => p >= 70],
+    ["C5 Garten", "Garten", alle],
+    ["C6 Drogerie", "Drogerie & Körperpflege", alle],
+    ["C7 Büro", "Bürobedarf & Schreibwaren", alle]
+  ];
+  el.innerHTML = `<div class="filter-stand"><b>Deine 7 Helium-Filter</b><ul>` + filter.map(([name, kat, passt]) => `<li>${hat(kat, passt) ? "✓" : "☐"} ${esc(name)}</li>`).join("") + `</ul><small>Ein Haken erscheint, sobald eine Liste mit diesem Filter Ideen geliefert hat. Liefert ein Filter gar nichts, bleibt das Kästchen leer.</small></div>`;
+}
 // To-do: welche Suchbegriffe du als Nächstes in Helium 10 prüfst
 // 1. Ideen in Arbeit („Prüfe ich gerade“) ohne Ampel, 2. Nicos prüfenswerte Ideen ohne Ampel. Mit Ampel ist eine Idee erledigt (Suchvolumen kann fehlen)
 function renderNaechste(){
+  renderFilterStand();
   const el = $("naechste");
   if (!el) return;
   const alle = ideenCache || [];
