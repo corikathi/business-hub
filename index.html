@@ -1901,7 +1901,6 @@ async function loadAuftraege(){
   const gruppe = (titel, liste) => liste.length ? `<h3 class="phase">${titel} (${liste.length})</h3>` + liste.map(a => auftragKarte(a, true)).join("") : "";
   const offen = aktiv.length;
   $("auftraege").innerHTML = (gruppe("Wartet auf dich", warteAufDich) + gruppe("Läuft bei Nico", beiNico)) || `<div class="empty">Gerade keine Anfrage. Starte bei Schritt 1.</div>`;
-  $("auftraege").innerHTML += (erledigt.length ? `<details class="aufklapp"><summary>Fertig (${erledigt.length})</summary>${erledigt.map(a => auftragKarte(a, true)).join("")}</details>` : "");
   zeigeNicoHinweis();
 }
 
