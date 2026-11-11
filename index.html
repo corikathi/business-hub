@@ -2439,7 +2439,7 @@ function renderTodo(){
   const el = $("todo");
   if (!el) return;
   const alle = ideenCache || [];
-  const ohneSV = alle.filter(i => ddSvFehlt(i));
+  const ohneSV = alle.filter(i => ddSvFehlt(i) && !/^Ampel rot/.test(i.ergebnis || ""));
   const xray = alle.filter(i => !/^Ampel /.test(i.ergebnis || "") && /Vorcheck: bestanden/.test(i.ergebnis || ""));
   const entscheiden = alle.filter(i => /^Ampel grün/.test(i.ergebnis || "") && !ddSvFehlt(i) && !istProdukt(i));
   const zeile = (titel, liste, reiter) => liste.length ? '<div data-todo="' + reiter + '" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #333;cursor:pointer"><span>' + titel + ' →</span><b>' + liste.length + '</b></div>' : "";
