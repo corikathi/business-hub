@@ -2851,6 +2851,15 @@ function suchvolumenNachtragen(idee, sv){
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
 // Suchvolumen speichern aus den Top 3 (Bereich Produkte)
 $("top3") && $("top3").addEventListener("click", async e => {
+  // „Als Produkt übernehmen“ aus den Top 3: dieselbe Übernahme wie in der Ideenliste
+  const prodKnopf = e.target.closest("[data-produkt]");
+  if (prodKnopf && $("ideenBereich")) {
+    const tmp = document.createElement("button");
+    tmp.type = "button"; tmp.hidden = true; tmp.dataset.produkt = prodKnopf.dataset.produkt;
+    $("ideenBereich").appendChild(tmp); tmp.click(); tmp.remove();
+    prodKnopf.disabled = true; prodKnopf.textContent = "Wird übernommen …";
+    return;
+  }
   // Hochladen auch aus den Top 3 (Bereich Produkte)
   const hoch = e.target.closest("[data-dd]");
   if (hoch) { ddZiel = hoch.dataset.dd; ddInput.value = ""; ddInput.click(); return; }
