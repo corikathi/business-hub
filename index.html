@@ -1677,12 +1677,13 @@ function sortProducts(list){
     (a.verworfen_weil ? 1 : 0) - (b.verworfen_weil ? 1 : 0) || (Number(b.punkte) || 0) - (Number(a.punkte) || 0));
 }
 
-// Prüfstand 1 (Recherche): Grobkalkulation ohne Herstellerkontakt. Wer besteht, kommt eine Runde weiter.
-// Angebote mit Preis und Mindestmenge: „Start“ = beste Marge im Budget (Testbestellung), „Später“ = beste Marge bei Nachbestellung.
+// Prüfstand 1 (Recherche): Zielpreis = höchster Einkaufspreis für 25 % Marge, Abgleich mit Alibaba-Listenpreisen. Kein Herstellerkontakt.
+// Prüfstand 2: echte Angebote mit Mindestmenge („Start“ = beste Marge im Budget, „Später“ = beste Marge bei Nachbestellung).
+// Wer einen Prüfstand besteht, kommt eine Runde weiter.
 const entscheidOffen = new Set();
 const pruefUngespeichert = new Set();
 const pruefOcrInfo = {};
-const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, menge: 200, nebenkosten: 1100, margeMin: 25, gewinnMin: 1000 };
+const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, nebenkosten: 1100, margeMin: 25, gewinnMin: 1000, zielMin: 3 };
 function pruefBudget(){ try { return Number(localStorage.getItem("startbudget")) || 3000; } catch (err) { return 3000; } }
 function pruefStartmenge(){ try { return Number(localStorage.getItem("startmenge")) || 100; } catch (err) { return 100; } }
 function entscheidZahl(v){
@@ -1711,17 +1712,48 @@ function pruefWerte(p){
   if (!angebote.length && p.einkaufspreis != null) angebote = [{ ek: p.einkaufspreis, moq: null }];
   return { vk: p.verkaufspreis, geb: p.fba_gebuehr, angebote, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
 }
-function pruefRechnung(w, o, startmenge){
-  if (!w.vk || w.geb == null || !o) return null;
+// Feste Abzüge pro Stück (alles außer Einkauf)
+function pruefKosten(w){
+  if (!w.vk || w.geb == null) return null;
   const netto = w.vk / PRUEF.ust;
   const fracht = Math.max(0.5, (w.kg || 1) * PRUEF.frachtProKg);
-  const gewinn = netto - w.geb - PRUEF.lager - o.ek - fracht - w.vk * PRUEF.werbung - w.vk * PRUEF.retouren;
-  const marge = Math.round(gewinn / netto * 100);
+  const werbung = w.vk * PRUEF.werbung, retouren = w.vk * PRUEF.retouren;
+  const rest = netto - w.geb - PRUEF.lager - fracht - werbung - retouren;
   const absatz = w.umsatz ? Math.round(w.umsatz / w.vk) : null;
-  const monat = absatz != null ? Math.round(gewinn * absatz) : null;
+  return { netto, fracht, werbung, retouren, rest, absatz };
+}
+// Prüfstand 1: Zielpreis
+function pruefZiel(w){
+  const k = pruefKosten(w);
+  if (!k) return null;
+  const zielGewinn = k.netto * PRUEF.margeMin / 100;
+  const maxEk = k.rest - zielGewinn;
+  const monat = k.absatz != null ? Math.round(zielGewinn * k.absatz) : null;
+  const menge = pruefStartmenge();
+  const start = Math.round(menge * (Math.max(maxEk, 0) + k.fracht) + PRUEF.nebenkosten);
+  const budget = pruefBudget();
+  const preise = (w.angebote || []).map(o => o.ek);
+  const guenstig = preise.length ? Math.min(...preise) : null;
+  const alibaba = guenstig == null ? null : guenstig <= maxEk;
+  const grund = [];
+  if (maxEk < PRUEF.zielMin) grund.push("Zielpreis unter " + PRUEF.zielMin + " € ist unrealistisch");
+  if (monat == null) grund.push("Umsatz pro Monat fehlt");
+  else if (monat < PRUEF.gewinnMin) grund.push("Gewinn unter " + PRUEF.gewinnMin.toLocaleString("de-DE") + " € im Monat");
+  if (start > budget) grund.push("Startkapital über deinem Budget");
+  if (alibaba === null) grund.push("Alibaba-Listenpreise zum Abgleich eintragen");
+  else if (!alibaba) grund.push("kein Alibaba-Preis unter dem Zielpreis");
+  return { ...k, zielGewinn, maxEk, monat, menge, start, budget, guenstig, alibaba, bestanden: !grund.length, grund };
+}
+// Prüfstand 2: ein Angebot durchrechnen
+function pruefRechnung(w, o, startmenge){
+  const k = pruefKosten(w);
+  if (!k || !o) return null;
+  const gewinn = k.rest - o.ek;
+  const marge = Math.round(gewinn / k.netto * 100);
+  const monat = k.absatz != null ? Math.round(gewinn * k.absatz) : null;
   const menge = Math.max(o.moq || 0, startmenge || pruefStartmenge());
-  const start = Math.round(menge * (o.ek + fracht) + PRUEF.nebenkosten);
-  return { ek: o.ek, moq: o.moq, menge, netto, fracht, gewinn, marge, absatz, monat, start };
+  const start = Math.round(menge * (o.ek + k.fracht) + PRUEF.nebenkosten);
+  return { ek: o.ek, moq: o.moq, menge, netto: k.netto, fracht: k.fracht, gewinn, marge, absatz: k.absatz, monat, start };
 }
 function pruefAuswertung(w){
   const liste = (w.angebote || []).map(o => pruefRechnung(w, o)).filter(Boolean);
@@ -1730,9 +1762,8 @@ function pruefAuswertung(w){
   const imBudget = liste.filter(r => r.start <= budget);
   const start = imBudget.length ? imBudget.reduce((a, b) => b.marge > a.marge ? b : a) : liste.reduce((a, b) => b.start < a.start ? b : a);
   const spaeter = liste.reduce((a, b) => b.marge > a.marge ? b : a);
-  const startOk = start.start <= budget;
   const grund = [];
-  if (!startOk) grund.push("kein Angebot passt in dein Budget");
+  if (start.start > budget) grund.push("kein Angebot passt in dein Budget");
   if (spaeter.marge < PRUEF.margeMin) grund.push("Marge unter " + PRUEF.margeMin + " %");
   if (spaeter.monat == null) grund.push("Umsatz pro Monat fehlt");
   else if (spaeter.monat < PRUEF.gewinnMin) grund.push("Gewinn unter " + PRUEF.gewinnMin.toLocaleString("de-DE") + " € im Monat");
@@ -1750,32 +1781,54 @@ function pruefMengen(w, budget){
     return { q, r, ok: r.start <= budget };
   }).filter(Boolean);
 }
+const pruefZeile = (t, v, fett) => `<tr><td>${t}</td><td style="text-align:right">${fett ? "<b>" + v + "</b>" : v}</td></tr>`;
+function pruefZielErgebnis(z, w){
+  if (!z) return "<small>Trag Verkaufspreis und Amazon-Gebühren ein, dann rechnet der Hub den Zielpreis.</small>";
+  const abgleich = (w.angebote || []).map(o => `<span style="margin-right:10px">${euro2(o.ek)} ${o.ek <= z.maxEk ? "✓" : "✗"}</span>`).join("");
+  return `<div style="font-size:15px;font-weight:700;margin-bottom:6px">Einkauf höchstens ${euro2(Math.max(z.maxEk, 0))} pro Stück</div>`
+    + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
+    + pruefZeile("Verkaufspreis", euro2(w.vk)) + pruefZeile("ohne 19 % USt.", euro2(z.netto))
+    + pruefZeile("− Amazon-Gebühren", euro2(w.geb)) + pruefZeile("− Lager", euro2(PRUEF.lager))
+    + pruefZeile("− Fracht + Zoll (geschätzt)", euro2(z.fracht)) + pruefZeile("− Werbung 12 %", euro2(z.werbung)) + pruefZeile("− Retouren 3 %", euro2(z.retouren))
+    + pruefZeile("= bleibt für Einkauf und Gewinn", euro2(z.rest), true)
+    + pruefZeile("− dein Gewinn (" + PRUEF.margeMin + " %)", euro2(z.zielGewinn))
+    + pruefZeile("= Einkauf höchstens", euro2(z.maxEk), true)
+    + pruefZeile("Absatz pro Monat", z.absatz != null ? z.absatz + " Stück" : "–")
+    + pruefZeile("Gewinn pro Monat bei " + PRUEF.margeMin + " %", euro0(z.monat), true)
+    + pruefZeile("Startkapital (" + z.menge + " Stück zum Höchstpreis + Muster, Fotos, Werbung)", euro0(z.start), true) + `</table>`
+    + `<div style="font-size:13px;margin-top:8px"><b>Abgleich mit Alibaba:</b> ${abgleich || "noch keine Listenpreise eingetragen"}</div>`
+    + `<div style="margin-top:6px;font-weight:700">${z.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + z.grund.join(", ")}</div>`;
+}
 function pruefErgebnis(a, w){
-  if (!a) return "<small>Trag Verkaufspreis, Amazon-Gebühren und mindestens ein Angebot ein, dann rechnet der Hub.</small>";
+  if (!a) return "<small>Trag die Angebote der Hersteller mit Preis und Mindestmenge ein, dann rechnet der Hub.</small>";
   const s = a.spaeter;
-  const z = (t, v, fett) => `<tr><td>${t}</td><td style="text-align:right">${fett ? "<b>" + v + "</b>" : v}</td></tr>`;
   const rolle = r => [r === a.start ? "Start" : "", r === a.spaeter ? "Später" : ""].filter(Boolean).join(" + ");
   const zeilen = a.liste.map(r => `<tr><td>${euro2(r.ek)}</td><td style="text-align:right">${r.menge}${r.moq && r.moq > pruefStartmenge() ? " (Mindestmenge)" : ""}</td><td style="text-align:right">${r.marge} %</td><td style="text-align:right">${euro0(r.monat)}</td><td style="text-align:right">${euro0(r.start)}</td><td><b>${rolle(r)}</b></td></tr>`).join("");
   return `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Rechnung pro Stück beim besten Angebot (${euro2(s.ek)})</div>`
     + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
-    + z("Verkaufspreis", euro2(w.vk)) + z("ohne 19 % USt.", euro2(s.netto))
-    + z("− Amazon-Gebühren", euro2(w.geb)) + z("− Lager", euro2(PRUEF.lager)) + z("− Einkauf", euro2(s.ek))
-    + z("− Fracht + Zoll (geschätzt)", euro2(s.fracht)) + z("− Werbung 12 %", euro2(w.vk * PRUEF.werbung)) + z("− Retouren 3 %", euro2(w.vk * PRUEF.retouren))
-    + z("Gewinn pro Stück", euro2(s.gewinn) + " (" + s.marge + " %)", true)
-    + z("Absatz pro Monat", s.absatz != null ? s.absatz + " Stück" : "–") + z("Gewinn pro Monat", euro0(s.monat), true) + `</table>`
+    + pruefZeile("Verkaufspreis", euro2(w.vk)) + pruefZeile("ohne 19 % USt.", euro2(s.netto))
+    + pruefZeile("− Amazon-Gebühren", euro2(w.geb)) + pruefZeile("− Lager", euro2(PRUEF.lager)) + pruefZeile("− Einkauf", euro2(s.ek))
+    + pruefZeile("− Fracht + Zoll (geschätzt)", euro2(s.fracht)) + pruefZeile("− Werbung 12 %", euro2(w.vk * PRUEF.werbung)) + pruefZeile("− Retouren 3 %", euro2(w.vk * PRUEF.retouren))
+    + pruefZeile("Gewinn pro Stück", euro2(s.gewinn) + " (" + s.marge + " %)", true)
+    + pruefZeile("Absatz pro Monat", s.absatz != null ? s.absatz + " Stück" : "–") + pruefZeile("Gewinn pro Monat", euro0(s.monat), true) + `</table>`
     + `<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;font-size:13px"><tr><th style="text-align:left">Einkauf</th><th>Menge</th><th>Marge</th><th>Gewinn/Monat</th><th>Startkapital</th><th></th></tr>${zeilen}</table></div>`
     + `<div style="font-size:13px;font-weight:700;margin-top:10px">Was kostet der Start?</div><div style="overflow-x:auto"><table style="width:100%;font-size:13px"><tr><th style="text-align:left">Erste Bestellung</th><th>Angebot</th><th>Marge</th><th>Startkapital</th><th>Im Budget</th></tr>${pruefMengen(w, a.budget).map(x => `<tr><td>${x.q} Stück${x.r.menge > x.q ? " (Mindestmenge " + x.r.menge + ")" : ""}</td><td style="text-align:right">${euro2(x.r.ek)}</td><td style="text-align:right">${x.r.marge} %</td><td style="text-align:right">${euro0(x.r.start)}</td><td style="text-align:center">${x.ok ? "✓" : "✗"}</td></tr>`).join("")}</table></div>`
     + `<small style="display:block">Start = beste Marge, die in dein Budget (${euro0(a.budget)}) passt. Später = beste Marge bei Nachbestellung. Startkapital = Menge × (Einkauf + Fracht) + ca. 1.100 € für Muster, Fotos und Werbung. Menge = deine erste Bestellung (${pruefStartmenge()} Stück) oder die Mindestmenge des Herstellers, wenn die höher ist.</small>`
-    + `<div style="margin-top:6px;font-weight:700">${a.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + a.grund.join(", ")}</div>`;
+    + `<div style="margin-top:6px;font-weight:700">${a.bestanden ? "✓ Prüfstand 2 bestanden" : "✗ Noch nicht bestanden: " + a.grund.join(", ")}</div>`;
+}
+function pruefStufeErgebnis(stufe, w){ return stufe === 1 ? pruefZielErgebnis(pruefZiel(w), w) : pruefErgebnis(pruefAuswertung(w), w); }
+function pruefBestanden(stufe, w){
+  if (stufe === 1) { const z = pruefZiel(w); return !!(z && z.bestanden); }
+  const a = pruefAuswertung(w); return !!(a && a.bestanden);
 }
 function entscheidKarte(p){
   const w = pruefWerte(p);
-  const a = pruefAuswertung(w);
   const stufe = p.stufe || 1;
   const wert = v => v == null ? "" : String(v).replace(".", ",");
   const ok = b => b ? "✓" : "○";
-  const titel = stufe === 1 ? "Prüfstand 1: Recherche und Grobkalkulation" : stufe === 2 ? "Prüfstand 2: Herstellerangebote (kommt als Nächstes)" : "Prüfstand " + stufe;
-  return `<details class="entscheid" data-pid="${esc(p.id)}" ${entscheidOffen.has(String(p.id)) ? "open" : ""} style="margin-top:8px"><summary>${titel}</summary>
+  const titel = stufe === 1 ? "Prüfstand 1: Zielpreis (Recherche)" : stufe === 2 ? "Prüfstand 2: Herstellerangebote" : "Prüfstand 3: Muster (kommt als Nächstes)";
+  const feldText = stufe === 1 ? "Alibaba-Listenpreise zum Abgleich, mit ; trennen" : "Angebote der Hersteller: Preis € (Mindestmenge), mit ; trennen";
+  return `<details class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" ${entscheidOffen.has(String(p.id)) ? "open" : ""} style="margin-top:8px"><summary>${titel}</summary>
     <div style="display:grid;gap:8px;margin-top:8px">
       <label>${ok((p.risiken || []).length)} Was nervt Käufer? (1–3 Sterne lesen, eine Beschwerde pro Zeile)<textarea data-feld="risiken" rows="3" style="width:100%">${esc((p.risiken || []).join("\n"))}</textarea></label>
       <label>${ok(p.verbesserung)} Deine Verbesserung (ein Satz)<input data-feld="verbesserung" style="width:100%" value="${esc(p.verbesserung || "")}"></label>
@@ -1785,12 +1838,12 @@ function entscheidKarte(p){
         <label>Gewicht kg (mit Verpackung)<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
         <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
       </div>
-      <label>Angebote von Alibaba: Preis € (Mindestmenge), mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 10,84 (20); 7,69 (200); 6,79 (300)" value="${esc(pruefAngeboteText(w.angebote))}"></label>
+      <label>${feldText}<input data-feld="einkaufspreise" style="width:100%" placeholder="${stufe === 1 ? "z. B. 6,79; 7,69; 10,84" : "z. B. 10,84 (20); 7,69 (200); 6,79 (300)"}" value="${esc(pruefAngeboteText(w.angebote))}"></label>
       <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div>
-      <div data-rechnung>${pruefErgebnis(a, w)}</div>
+      <div data-rechnung>${pruefStufeErgebnis(stufe, w)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" data-entscheid="${esc(p.id)}">Speichern</button>
-        ${stufe === 1 && a && a.bestanden ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand 2</button>` : ""}
+        ${stufe <= 2 && pruefBestanden(stufe, w) ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand ${stufe + 1}</button>` : ""}
         <button type="button" class="ghost" data-raus="${esc(p.id)}">Fliegt raus</button>
       </div>
     </div></details>`;
@@ -1801,23 +1854,35 @@ function entscheidLesen(karte){
 }
 function pruefVergleich(liste){
   if (!liste.length) return "";
-  const zeilen = liste.map(p => { const a = pruefAuswertung(pruefWerte(p)); return `<tr><td>${esc(p.name)}</td><td style="text-align:center">${p.stufe || 1}</td><td style="text-align:right">${a ? a.spaeter.marge + " %" : "–"}</td><td style="text-align:right">${a ? euro0(a.spaeter.monat) : "–"}</td><td style="text-align:right">${a ? euro0(a.start.start) : "–"}</td><td style="text-align:center">${a ? (a.bestanden ? "✓" : "✗") : "offen"}</td></tr>`; }).join("");
+  const zeilen = liste.map(p => {
+    const w = pruefWerte(p), stufe = p.stufe || 1, z = pruefZiel(w), a = stufe >= 2 ? pruefAuswertung(w) : null;
+    const monat = a ? a.spaeter.monat : z ? z.monat : null;
+    const start = a ? a.start.start : z ? z.start : null;
+    const status = stufe === 1 ? (z ? (z.bestanden ? "✓" : "✗") : "offen") : (a ? (a.bestanden ? "✓" : "✗") : "offen");
+    return `<tr><td>${esc(p.name)}</td><td style="text-align:center">${stufe}</td><td style="text-align:right">${z ? euro2(Math.max(z.maxEk, 0)) : "–"}</td><td style="text-align:right">${euro0(monat)}</td><td style="text-align:right">${euro0(start)}</td><td style="text-align:center">${status}</td></tr>`;
+  }).join("");
   return `<div class="pruef-vergleich" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px">
     <h4 style="margin:0 0 8px">Vergleich deiner Kandidaten</h4>
     <label style="font-size:13px">Dein Startbudget: <input data-budget inputmode="numeric" style="width:90px" value="${pruefBudget()}"> €</label>
     <label style="font-size:13px;margin-left:12px">Erste Bestellung: <input data-startmenge inputmode="numeric" style="width:70px" value="${pruefStartmenge()}"> Stück</label>
-    <div style="overflow-x:auto"><table style="width:100%;font-size:13px;margin-top:8px"><tr><th style="text-align:left">Produkt</th><th>Prüfstand</th><th>Marge (später)</th><th>Gewinn/Monat</th><th>Startkapital</th><th>Bestanden</th></tr>${zeilen}</table></div>
-    <small>Prüfstand 1 ist bestanden, wenn ein Angebot in dein Budget passt und das beste Angebot ab ${PRUEF.margeMin} % Marge und ${PRUEF.gewinnMin.toLocaleString("de-DE")} € Gewinn im Monat bringt. Alles sind Schätzungen ohne Herstellerangebot.</small>
+    <div style="overflow-x:auto"><table style="width:100%;font-size:13px;margin-top:8px"><tr><th style="text-align:left">Produkt</th><th>Prüfstand</th><th>Einkauf höchstens</th><th>Gewinn/Monat</th><th>Startkapital</th><th>Bestanden</th></tr>${zeilen}</table></div>
+    <small>Prüfstand 1: Einkauf höchstens = Preis, bei dem ${PRUEF.margeMin} % Marge übrig bleiben. Bestanden ab ${PRUEF.zielMin} € Zielpreis, ${PRUEF.gewinnMin.toLocaleString("de-DE")} € Gewinn im Monat, Startkapital im Budget und Alibaba-Preisen unter dem Zielpreis. Prüfstand 2 rechnet mit echten Angeboten. Alles sind Schätzungen.</small>
   </div>`;
 }
 function pruefDaten(karte, p){
   const w = entscheidLesen(karte);
-  const a = pruefAuswertung(w);
+  const stufe = p.stufe || 1;
+  const z = stufe === 1 ? pruefZiel(w) : null, a = stufe >= 2 ? pruefAuswertung(w) : null;
   const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Gewicht: ") && !String(x).startsWith("Umsatz: ") && !String(x).startsWith("Einkaufspreise: "));
   if (w.kg != null) fragen.push("Gewicht: " + w.kg);
   if (w.umsatz != null) fragen.push("Umsatz: " + Math.round(w.umsatz));
   if (w.angebote.length) fragen.push("Einkaufspreise: " + pruefAngeboteText(w.angebote));
-  return { a, upd: { risiken: w.risiken.split("\n").map(x => x.trim()).filter(Boolean), verbesserung: w.verbesserung || null, verkaufspreis: w.vk, fba_gebuehr: w.geb, einkaufspreis: a ? a.spaeter.ek : null, marge_prozent: a ? a.spaeter.marge : null, startinvestition: a ? a.start.start : null, offene_fragen: fragen } };
+  return { w, stufe, upd: {
+    risiken: w.risiken.split("\n").map(x => x.trim()).filter(Boolean), verbesserung: w.verbesserung || null, verkaufspreis: w.vk, fba_gebuehr: w.geb,
+    einkaufspreis: a ? a.spaeter.ek : (z ? z.guenstig : null),
+    marge_prozent: a ? a.spaeter.marge : null,
+    startinvestition: a ? a.start.start : (z ? z.start : null),
+    offene_fragen: fragen } };
 }
 $("products").addEventListener("toggle", e => {
   if (!e.target.classList || !e.target.classList.contains("entscheid")) return;
@@ -1828,7 +1893,7 @@ $("products").addEventListener("input", e => {
   if (!karte) return;
   const w = entscheidLesen(karte);
   pruefUngespeichert.add(karte.dataset.pid);
-  karte.querySelector("[data-rechnung]").innerHTML = pruefErgebnis(pruefAuswertung(w), w);
+  karte.querySelector("[data-rechnung]").innerHTML = pruefStufeErgebnis(Number(karte.dataset.stufe) || 1, w);
 });
 $("products").addEventListener("change", e => {
   const schluessel = e.target.matches("[data-budget]") ? "startbudget" : e.target.matches("[data-startmenge]") ? "startmenge" : null;
@@ -1850,16 +1915,16 @@ $("products").addEventListener("click", async e => {
     if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
     return loadProducts();
   }
-  const { a, upd } = pruefDaten(knopf.closest(".entscheid"), p);
+  const { w, stufe, upd } = pruefDaten(knopf.closest(".entscheid"), p);
+  if (knopf.dataset.weiter) { if (!pruefBestanden(stufe, w)) return; upd.stufe = stufe + 1; }
   pruefUngespeichert.delete(id);
-  if (knopf.dataset.weiter) { if (!a || !a.bestanden) return; upd.stufe = 2; }
   knopf.disabled = true;
   const { error } = await sb.from("produkte").update(upd).eq("id", id);
   knopf.disabled = false;
   if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
   await loadProducts();
 });
-// Screenshot von Alibaba auslesen: Texterkennung direkt im Browser (Tesseract.js), Preise mit Mindestmengen paaren
+// Screenshot von Alibaba auslesen: Texterkennung direkt im Browser (Tesseract.js), Preise mit Mindestmengen paaren, danach speichern
 let ocrLaden = null;
 function ocrBereit(){
   if (window.Tesseract) return Promise.resolve();
@@ -1902,12 +1967,12 @@ $("products").addEventListener("change", async e => {
     await ocrBereit();
     const { data } = await window.Tesseract.recognize(feld.files[0], "deu+eng");
     const neu = ocrAngebote(data && data.text);
-    if (!neu.length) { pruefUngespeichert.delete(pid); zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Angebote von Hand ein."); return; }
+    if (!neu.length) { pruefUngespeichert.delete(pid); zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Preise von Hand ein."); return; }
     const eingabe = karte.querySelector('[data-feld="einkaufspreise"]');
     const alle = [...pruefAngebote(eingabe.value), ...neu].filter((o, i, l) => l.findIndex(x => x.ek === o.ek && x.moq === o.moq) === i);
     eingabe.value = pruefAngeboteText(alle);
     eingabe.dispatchEvent(new Event("input", { bubbles: true }));
-    zeige(neu.length + " Angebote übernommen und gespeichert. Falsche Werte (z. B. alte, durchgestrichene Preise) einfach löschen und nochmal Speichern.");
+    zeige(neu.length + " Preise übernommen und gespeichert. Falsche Werte (z. B. alte, durchgestrichene Preise) einfach löschen und nochmal Speichern.");
     const speichern = karte.querySelector("[data-entscheid]");
     if (speichern) speichern.click(); else pruefUngespeichert.delete(pid);
   } catch (err) {
