@@ -2155,7 +2155,7 @@ async function loadIdeen(){
   if ($("saisonLink")) $("saisonLink").innerHTML = saisonAnzahl ? '<button type="button" class="ghost" id="saisonUmschalten">' + (zeigeSaison ? "Ausgeblendete ausblenden" : "Ausgeblendete anzeigen (" + saisonAnzahl + ")") + "</button>" : "";
   renderTop3();
   renderNaechste();
-  renderTodo();
+  try { renderTodo(); } catch (err) { console.error('To-Do:', err); }
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
   // Nach Kategorie gruppiert, neueste Kategorie oben; innerhalb: prüfenswert, mit Haken, ungeprüft, rot nach Data Dive
   const rang = i => /^Prüfenswert/.test(i.grund || "") ? 0 : /^Mit Haken/.test(i.grund || "") ? 1 : /^Raus/.test(i.grund || "") ? 4 : i.status === "neu" ? 2 : 3;
