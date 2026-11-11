@@ -1774,7 +1774,7 @@ function pruefWerte(p){
   const liste = pruefListeLaden(p);
   let angebote = pruefAngebote(pruefExtra(p, "Einkaufspreise"));
   if (!angebote.length && p.einkaufspreis != null) angebote = [{ ek: p.einkaufspreis, moq: null }];
-  if (stufe >= 2 && liste.some(r => r.preis)) angebote = angeboteAusListe(liste);
+  if (stufe >= 2) angebote = angeboteAusListe(liste);
   return { vk: p.verkaufspreis, geb: p.fba_gebuehr, angebote, liste, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
 }
 // Feste Abzüge pro Stück (alles außer Einkauf)
@@ -1904,7 +1904,7 @@ function entscheidKarte(p){
     ? `<label>Listenpreise von Alibaba, mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>${ocrKnopf}`
     : `<small>Alibaba-Listenpreise: ${esc(pruefAngeboteText(w.angebote)) || "keine"}</small>`;
   const tabelle = stufe >= 2
-    ? '<small style="display:block">Vorgabe aus Prüfstand 1: höchstens ' + euro2(Math.max(z1 ? z1.maxEk : 0, 0)) + ' pro Stück. Trag die Preise der Hersteller selbst ein.</small>' + pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq }))) + ocrKnopf
+    ? '<small style="display:block">Vorgabe aus Prüfstand 1: höchstens ' + euro2(Math.max(z1 ? z1.maxEk : 0, 0)) + ' pro Stück. Trag die Preise der Hersteller selbst ein.</small>' + pruefAngeboteTabelle(w.liste) + ocrKnopf
     : `<small>Hersteller-Angebote werden freigeschaltet, sobald Prüfstand 1 bestanden ist.</small>`;
   const titelStufe = stufe === 1 ? "Prüfstand 1 · Zielpreis" : stufe === 2 ? "Prüfstand 2 · Hersteller" : "Prüfstand 3 · Muster";
   return `<div class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" style="display:grid;gap:14px">
@@ -2085,7 +2085,6 @@ $("products").addEventListener("click", async e => {
   if (knopf.dataset.weiter) {
     if (!pruefBestanden(stufe, w)) return;
     upd.stufe = stufe + 1;
-    if (stufe === 1 && !upd.offene_fragen.some(x => String(x).startsWith("Angebote: "))) upd.offene_fragen.push("Angebote: " + JSON.stringify(w.angebote.map(o => ({ preis: o.ek, moq: o.moq }))));
   }
   pruefUngespeichert.delete(id);
   knopf.disabled = true;
