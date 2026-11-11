@@ -1709,7 +1709,7 @@ function pruefWerte(p){
   if (!angebote.length && p.einkaufspreis != null) angebote = [{ ek: p.einkaufspreis, moq: null }];
   return { vk: p.verkaufspreis, geb: p.fba_gebuehr, angebote, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
 }
-function pruefRechnung(w, o){
+function pruefRechnung(w, o, startmenge){
   if (!w.vk || w.geb == null || !o) return null;
   const netto = w.vk / PRUEF.ust;
   const fracht = Math.max(0.5, (w.kg || 1) * PRUEF.frachtProKg);
@@ -1717,7 +1717,7 @@ function pruefRechnung(w, o){
   const marge = Math.round(gewinn / netto * 100);
   const absatz = w.umsatz ? Math.round(w.umsatz / w.vk) : null;
   const monat = absatz != null ? Math.round(gewinn * absatz) : null;
-  const menge = Math.max(o.moq || 0, pruefStartmenge());
+  const menge = Math.max(o.moq || 0, startmenge || pruefStartmenge());
   const start = Math.round(menge * (o.ek + fracht) + PRUEF.nebenkosten);
   return { ek: o.ek, moq: o.moq, menge, netto, fracht, gewinn, marge, absatz, monat, start };
 }
@@ -1738,6 +1738,16 @@ function pruefAuswertung(w){
 }
 function euro2(n){ return n == null ? "–" : n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"; }
 function euro0(n){ return n == null ? "–" : Math.round(n).toLocaleString("de-DE") + " €"; }
+// Startkosten für 50, 100 und 200 Stück: je Menge das Angebot mit der besten Marge, das ins Budget passt
+function pruefMengen(w, budget){
+  return [50, 100, 200].map(q => {
+    const l = (w.angebote || []).map(o => pruefRechnung(w, o, q)).filter(Boolean);
+    if (!l.length) return null;
+    const im = l.filter(r => r.start <= budget);
+    const r = im.length ? im.reduce((x, y) => y.marge > x.marge ? y : x) : l.reduce((x, y) => y.start < x.start ? y : x);
+    return { q, r, ok: r.start <= budget };
+  }).filter(Boolean);
+}
 function pruefErgebnis(a, w){
   if (!a) return "<small>Trag Verkaufspreis, Amazon-Gebühren und mindestens ein Angebot ein, dann rechnet der Hub.</small>";
   const s = a.spaeter;
@@ -1752,6 +1762,7 @@ function pruefErgebnis(a, w){
     + z("Gewinn pro Stück", euro2(s.gewinn) + " (" + s.marge + " %)", true)
     + z("Absatz pro Monat", s.absatz != null ? s.absatz + " Stück" : "–") + z("Gewinn pro Monat", euro0(s.monat), true) + `</table>`
     + `<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;font-size:13px"><tr><th style="text-align:left">Einkauf</th><th>Menge</th><th>Marge</th><th>Gewinn/Monat</th><th>Startkapital</th><th></th></tr>${zeilen}</table></div>`
+    + `<div style="font-size:13px;font-weight:700;margin-top:10px">Was kostet der Start?</div><div style="overflow-x:auto"><table style="width:100%;font-size:13px"><tr><th style="text-align:left">Erste Bestellung</th><th>Angebot</th><th>Marge</th><th>Startkapital</th><th>Im Budget</th></tr>${pruefMengen(w, a.budget).map(x => `<tr><td>${x.q} Stück${x.r.menge > x.q ? " (Mindestmenge " + x.r.menge + ")" : ""}</td><td style="text-align:right">${euro2(x.r.ek)}</td><td style="text-align:right">${x.r.marge} %</td><td style="text-align:right">${euro0(x.r.start)}</td><td style="text-align:center">${x.ok ? "✓" : "✗"}</td></tr>`).join("")}</table></div>`
     + `<small style="display:block">Start = beste Marge, die in dein Budget (${euro0(a.budget)}) passt. Später = beste Marge bei Nachbestellung. Startkapital = Menge × (Einkauf + Fracht) + ca. 1.100 € für Muster, Fotos und Werbung. Menge = deine erste Bestellung (${pruefStartmenge()} Stück) oder die Mindestmenge des Herstellers, wenn die höher ist.</small>`
     + `<div style="margin-top:6px;font-weight:700">${a.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + a.grund.join(", ")}</div>`;
 }
