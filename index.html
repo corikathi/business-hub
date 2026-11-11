@@ -2684,7 +2684,7 @@ async function loadIdeen(){
   const unter = (titel, liste) => liste.length ? `<details class="aufklapp unter"><summary>${titel} (${liste.length})</summary>${liste.map(karte).join("")}</details>` : "";
   // Reiter oben: was du gerade prüfst, was schon geprüft ist, alle übrigen Ideen
   if (!ideenTab) ideenTab = pruefe.length ? "pruefe" : "alle";
-  const rangliste = data.filter(i => ddPunktzahl(i) !== null).sort((a, b) => ddPunktzahl(b) - ddPunktzahl(a) || ddDeinUmsatz(b) - ddDeinUmsatz(a));
+  const rangliste = data.filter(i => ddPunktzahl(i) !== null && !/^Verworfen/.test(i.grund || "")).sort((a, b) => ddPunktzahl(b) - ddPunktzahl(a) || ddDeinUmsatz(b) - ddDeinUmsatz(a));
   const reiter = [["pruefe", "Prüfe ich gerade", pruefe.length], ["rang", "Rangliste", rangliste.length], ["geprueft", "Bereits geprüft", geprueft.length], ["alle", "Alle Ideen", data.length - pruefe.length - geprueft.length]]
     .map(([k, t, n]) => `<button type="button" class="ireiter ${ideenTab === k ? "on" : ""}" data-ireiter="${k}">${t} <span>${n}</span></button>`).join("");
   const leer = t => `<div class="muted" style="font-size:13px;padding:6px 0">${t}</div>`;
@@ -2821,7 +2821,7 @@ function ddDeinUmsatz(i){ const m = /Dein Umsatz \S+: realistisch etwa ([\d.]+) 
 function renderTop3(){
   const el = $("top3");
   if (!el) return;
-  const top = (ideenCache || []).filter(i => ddPunktzahl(i) !== null && !istProdukt(i))
+  const top = (ideenCache || []).filter(i => ddPunktzahl(i) !== null && !istProdukt(i) && !/^Verworfen/.test(i.grund || ""))
     .sort((a, b) => ddPunktzahl(b) - ddPunktzahl(a) || ddDeinUmsatz(b) - ddDeinUmsatz(a)).slice(0, 3);
   if (!top.length) { el.innerHTML = ""; return; }
   el.innerHTML = `<div class="top3-block"><h4>Top 3 aus der Rangliste</h4><small>Die besten Ideen, die noch nicht in Produkte sind. Übernehmen machst du selbst.</small>` + top.map((i, n) => {
@@ -2832,7 +2832,7 @@ function renderTop3(){
       <div class="top3-zahlen">${u ? "<span>Möglich: ca. " + u.toLocaleString("de-DE") + " € im Monat</span>" : ""}${such ? "<span>Suchbegriff: <b class=\"dd-such\">" + esc(such.trim()) + "</b></span>" : ""}</div>
       ${chance ? `<small><b>Deine Chance:</b> ${esc(chance.trim())}</small>` : ""}
       ${!ddVorlaeufig(i) && ddSvFehlt(i) ? `<div class="dd-sv"><small>Suchvolumen aus Magnet oder Cerebro, dann übernehmen:</small><input type="text" inputmode="numeric" placeholder="z. B. 12600" data-svwert="${esc(i.id)}"><button type="button" class="ghost dd-knopf" data-sv="${esc(i.id)}">Speichern</button></div>` : ""}
-      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : ddSvFehlt(i) ? "" : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}</div></div>`;
+      <div class="idee-knoepfe">${ddVorlaeufig(i) ? `<button type="button" class="dd-knopf dd-haupt" data-dd="${esc(i.id)}">Mit Helium prüfen, dann übernehmen</button><small>Die Zahlen sind aus Data Dive. Lade vor der Übernahme Xray und Schwarze Box aus Helium hoch.</small>` : ddSvFehlt(i) ? "" : `<button type="button" class="dd-knopf dd-produkt" data-produkt="${esc(i.id)}">Als Produkt übernehmen</button>`}<button type="button" class="ghost dd-knopf" data-top3weg="${esc(i.id)}" title="Bleibt unter Ideen">✕ Verwerfen</button></div></div>`;
   }).join("") + "</div>";
 }
 // Checkliste der 7 Helium-Filter: ein Haken, sobald eine Liste mit diesem Filter Ideen geliefert hat
@@ -3110,6 +3110,16 @@ function suchvolumenNachtragen(idee, sv){
 // Rückmeldung zum Hochladen, direkt über der Ideen-Liste
 // Suchvolumen speichern aus den Top 3 (Bereich Produkte)
 $("top3") && $("top3").addEventListener("click", async e => {
+  // Verwerfen aus den Top 3: die Idee wird nicht gelöscht, sie bleibt unter Ideen
+  const weg3 = e.target.closest("[data-top3weg]");
+  if (weg3) {
+    const idee = (ideenCache || []).find(x => String(x.id) === weg3.dataset.top3weg);
+    if (!idee) return;
+    const { error } = await sb.from("ideen").update({ grund: "Verworfen von dir" }).eq("id", idee.id);
+    if (error) { alert("Konnte nicht verworfen werden: " + error.message); return; }
+    await loadIdeen();
+    return;
+  }
   // „Als Produkt übernehmen“ aus den Top 3: dieselbe Übernahme wie in der Ideenliste
   const prodKnopf = e.target.closest("[data-produkt]");
   if (prodKnopf && $("ideenBereich")) {
