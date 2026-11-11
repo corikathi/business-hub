@@ -1691,10 +1691,21 @@ function entscheidZahl(v){
 }
 function pruefExtra(p, key){ const t = (p.offene_fragen || []).find(x => String(x).startsWith(key + ": ")); return t ? String(t).slice(key.length + 2) : ""; }
 function pruefIdee(p){ return (ideenCache || []).find(i => p.auftrag === "Idee " + i.id); }
+function pruefListe(s){ return String(s || "").split(";").join(" ").split("/").join(" ").split(" ").map(entscheidZahl).filter(n => n != null && n > 0); }
+function pruefMitte(l){ if (!l.length) return null; const s = [...l].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function pruefWerte(p){
   const idee = pruefIdee(p);
   const umsatz = entscheidZahl(pruefExtra(p, "Umsatz"));
-  return { vk: p.verkaufspreis, geb: p.fba_gebuehr, ek: p.einkaufspreis, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
+  let ekListe = pruefListe(pruefExtra(p, "Einkaufspreise"));
+  if (!ekListe.length && p.einkaufspreis != null) ekListe = [p.einkaufspreis];
+  return { vk: p.verkaufspreis, geb: p.fba_gebuehr, ek: pruefMitte(ekListe), ekListe, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
+}
+function pruefSpanne(w){
+  if (!w.ekListe || w.ekListe.length < 2) return "";
+  const min = Math.min(...w.ekListe), max = Math.max(...w.ekListe);
+  const a = pruefRechnung({ ...w, ek: min }), b = pruefRechnung({ ...w, ek: max });
+  if (!a || !b) return "";
+  return "<small style=\"display:block;margin-top:4px\">Günstigstes Angebot (" + euro2(min) + "): " + a.marge + " % Marge, " + euro0(a.monat) + " im Monat · teuerstes (" + euro2(max) + "): " + b.marge + " %, " + euro0(b.monat) + ". Gerechnet wird mit dem mittleren Preis (" + euro2(w.ek) + ").</small>";
 }
 function pruefRechnung(w){
   if (!w.vk || w.ek == null || w.geb == null) return null;
@@ -1725,7 +1736,7 @@ function pruefErgebnis(r, w){
     + z("− Fracht + Zoll (geschätzt)", euro2(r.fracht)) + z("− Werbung 12 %", euro2(w.vk * PRUEF.werbung)) + z("− Retouren 3 %", euro2(w.vk * PRUEF.retouren))
     + z("Gewinn pro Stück", euro2(r.gewinn) + " (" + r.marge + " %)", true)
     + z("Absatz pro Monat", r.absatz != null ? r.absatz + " Stück" : "–") + z("Gewinn pro Monat", euro0(r.monat), true)
-    + z("Startkapital (200 Stück + Muster, Fotos, Werbung)", euro0(r.start), true) + `</table>`
+    + z("Startkapital (200 Stück + Muster, Fotos, Werbung)", euro0(r.start), true) + `</table>` + pruefSpanne(w)
     + `<div style="margin-top:6px;font-weight:700">${r.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + grund.join(", ")}</div>`;
 }
 function entscheidKarte(p){
@@ -1742,7 +1753,7 @@ function entscheidKarte(p){
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
         <label>Verkaufspreis € (brutto)<input data-feld="verkaufspreis" inputmode="decimal" value="${wert(w.vk)}"></label>
         <label>Amazon-Gebühren € (Xray)<input data-feld="fba_gebuehr" inputmode="decimal" value="${wert(w.geb)}"></label>
-        <label>Einkauf € (Alibaba-Liste)<input data-feld="einkaufspreis" inputmode="decimal" value="${wert(w.ek)}"></label>
+        <label>Einkaufspreise € (Alibaba, mehrere mit ; trennen)<input data-feld="einkaufspreise" placeholder="z. B. 6,79; 7,69; 10,84" value="${(w.ekListe || []).map(wert).join("; ")}"></label>
         <label>Gewicht kg (mit Verpackung)<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
         <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
       </div>
@@ -1756,7 +1767,8 @@ function entscheidKarte(p){
 }
 function entscheidLesen(karte){
   const f = n => karte.querySelector(`[data-feld="${n}"]`);
-  return { risiken: f("risiken").value, verbesserung: f("verbesserung").value.trim(), vk: entscheidZahl(f("verkaufspreis").value), geb: entscheidZahl(f("fba_gebuehr").value), ek: entscheidZahl(f("einkaufspreis").value), kg: entscheidZahl(f("gewicht").value), umsatz: entscheidZahl(f("umsatz").value) };
+  const ekListe = pruefListe(f("einkaufspreise").value);
+  return { risiken: f("risiken").value, verbesserung: f("verbesserung").value.trim(), vk: entscheidZahl(f("verkaufspreis").value), geb: entscheidZahl(f("fba_gebuehr").value), ek: pruefMitte(ekListe), ekListe, kg: entscheidZahl(f("gewicht").value), umsatz: entscheidZahl(f("umsatz").value) };
 }
 function pruefVergleich(liste){
   if (!liste.length) return "";
@@ -1771,7 +1783,8 @@ function pruefVergleich(liste){
 function pruefDaten(karte, p){
   const w = entscheidLesen(karte);
   const r = pruefRechnung(w);
-  const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Gewicht: ") && !String(x).startsWith("Umsatz: "));
+  const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Gewicht: ") && !String(x).startsWith("Umsatz: ") && !String(x).startsWith("Einkaufspreise: "));
+  if (w.ekListe && w.ekListe.length) fragen.push("Einkaufspreise: " + w.ekListe.map(n => String(n).replace(".", ",")).join("; "));
   if (w.kg != null) fragen.push("Gewicht: " + w.kg);
   if (w.umsatz != null) fragen.push("Umsatz: " + Math.round(w.umsatz));
   return { r, upd: { risiken: w.risiken.split("\n").map(x => x.trim()).filter(Boolean), verbesserung: w.verbesserung || null, verkaufspreis: w.vk, fba_gebuehr: w.geb, einkaufspreis: w.ek, marge_prozent: r ? r.marge : null, startinvestition: r ? r.start : null, offene_fragen: fragen } };
