@@ -2077,7 +2077,7 @@ $("products").addEventListener("click", async e => {
   if (knopf.dataset.raus) {
     if (!confirm(`„${p.name}“ fliegt raus? Es bleibt in der Datenbank, wird hier aber ausgeblendet.`)) return;
     pruefUngespeichert.delete(id);
-    const { error } = await sb.from("produkte").update({ ampel: "rot", grund: "Prüfstand " + (p.stufe || 1) + " nicht bestanden" }).eq("id", id);
+    const { error } = await sb.from("produkte").update({ ampel: "rot", grund: pmRausGrund(p) }).eq("id", id);
     if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
     return loadProducts();
   }
@@ -2182,10 +2182,17 @@ $("products").addEventListener("change", async e => {
   }
 });
 // Für später gemerkte Produkte: ausgeblendet, aber nicht gelöscht, zum Zurückholen unten auf der Seite
+// Grund fürs Rausfliegen: die Gründe aus der aktuellen Prüfung, damit du siehst, warum
+function pmRausGrund(p){
+  const karte = document.querySelector(".entscheid[data-pid=\"" + p.id + "\"]");
+  let gruende = [];
+  if (karte) { const w = entscheidLesen(karte); const g = (p.stufe || 1) === 1 ? pruefZiel(w) : pruefAuswertung(w); gruende = (g && g.grund) || []; }
+  return "Raus: " + (gruende.length ? gruende.join(", ") : "Prüfstand " + (p.stufe || 1) + " nicht bestanden");
+}
 function pmSpaeterBlock(){
-  const liste = products.filter(p => p.ampel === "rot" && /^Für später/.test(p.grund || ""));
+  const liste = products.filter(p => p.ampel === "rot" && /^(Für später|Raus)/.test(p.grund || ""));
   if (!liste.length) return "";
-  return `<details class="pm-spaeter" style="margin-top:14px"><summary>Für später gemerkt (${liste.length})</summary>${liste.map(p => `<div class="pm-spaeter-zeile"><b>${esc(p.name)}</b><small>${esc(p.grund)}</small><button type="button" class="ghost" data-zurueck="${esc(p.id)}">Zurückholen</button></div>`).join("")}</details>`;
+  return `<details class="pm-spaeter" style="margin-top:14px"><summary>Gemerkt oder rausgeflogen (${liste.length})</summary>${liste.map(p => `<div class="pm-spaeter-zeile"><b>${esc(p.name)}</b><small>${esc(p.grund)}</small>${/^Für später/.test(p.grund || "") ? "<button type=\"button\" class=\"ghost\" data-zurueck=\"" + esc(p.id) + "\">Zurückholen</button>" : ""}</div>`).join("")}</details>`;
 }
 function renderProducts(erzwingen){
   // Nicht neu zeichnen, solange in einem Prüfstand ungespeicherte Eingaben oder eine Texterkennung laufen
