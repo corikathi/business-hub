@@ -1682,6 +1682,7 @@ function sortProducts(list){
 const entscheidOffen = new Set();
 const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, menge: 200, nebenkosten: 1100, margeMin: 25, gewinnMin: 1000 };
 function pruefBudget(){ try { return Number(localStorage.getItem("startbudget")) || 3000; } catch (err) { return 3000; } }
+function pruefStartmenge(){ try { return Number(localStorage.getItem("startmenge")) || 100; } catch (err) { return 100; } }
 function entscheidZahl(v){
   let s = String(v ?? "").trim().split(" ").join("").split("€").join("");
   if (!s) return null;
@@ -1716,7 +1717,7 @@ function pruefRechnung(w, o){
   const marge = Math.round(gewinn / netto * 100);
   const absatz = w.umsatz ? Math.round(w.umsatz / w.vk) : null;
   const monat = absatz != null ? Math.round(gewinn * absatz) : null;
-  const menge = o.moq || PRUEF.menge;
+  const menge = Math.max(o.moq || 0, pruefStartmenge());
   const start = Math.round(menge * (o.ek + fracht) + PRUEF.nebenkosten);
   return { ek: o.ek, moq: o.moq, menge, netto, fracht, gewinn, marge, absatz, monat, start };
 }
@@ -1742,7 +1743,7 @@ function pruefErgebnis(a, w){
   const s = a.spaeter;
   const z = (t, v, fett) => `<tr><td>${t}</td><td style="text-align:right">${fett ? "<b>" + v + "</b>" : v}</td></tr>`;
   const rolle = r => [r === a.start ? "Start" : "", r === a.spaeter ? "Später" : ""].filter(Boolean).join(" + ");
-  const zeilen = a.liste.map(r => `<tr><td>${euro2(r.ek)}</td><td style="text-align:right">${r.moq ? r.moq : PRUEF.menge + "*"}</td><td style="text-align:right">${r.marge} %</td><td style="text-align:right">${euro0(r.monat)}</td><td style="text-align:right">${euro0(r.start)}</td><td><b>${rolle(r)}</b></td></tr>`).join("");
+  const zeilen = a.liste.map(r => `<tr><td>${euro2(r.ek)}</td><td style="text-align:right">${r.menge}${r.moq && r.moq > pruefStartmenge() ? " (Mindestmenge)" : ""}</td><td style="text-align:right">${r.marge} %</td><td style="text-align:right">${euro0(r.monat)}</td><td style="text-align:right">${euro0(r.start)}</td><td><b>${rolle(r)}</b></td></tr>`).join("");
   return `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Rechnung pro Stück beim besten Angebot (${euro2(s.ek)})</div>`
     + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
     + z("Verkaufspreis", euro2(w.vk)) + z("ohne 19 % USt.", euro2(s.netto))
@@ -1751,7 +1752,7 @@ function pruefErgebnis(a, w){
     + z("Gewinn pro Stück", euro2(s.gewinn) + " (" + s.marge + " %)", true)
     + z("Absatz pro Monat", s.absatz != null ? s.absatz + " Stück" : "–") + z("Gewinn pro Monat", euro0(s.monat), true) + `</table>`
     + `<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;font-size:13px"><tr><th style="text-align:left">Einkauf</th><th>Menge</th><th>Marge</th><th>Gewinn/Monat</th><th>Startkapital</th><th></th></tr>${zeilen}</table></div>`
-    + `<small style="display:block">Start = beste Marge, die in dein Budget (${euro0(a.budget)}) passt. Später = beste Marge bei Nachbestellung. Startkapital = Menge × (Einkauf + Fracht) + ca. 1.100 € für Muster, Fotos und Werbung.${a.liste.some(r => !r.moq) ? " * Mindestmenge unbekannt, gerechnet mit 200 Stück." : ""}</small>`
+    + `<small style="display:block">Start = beste Marge, die in dein Budget (${euro0(a.budget)}) passt. Später = beste Marge bei Nachbestellung. Startkapital = Menge × (Einkauf + Fracht) + ca. 1.100 € für Muster, Fotos und Werbung. Menge = deine erste Bestellung (${pruefStartmenge()} Stück) oder die Mindestmenge des Herstellers, wenn die höher ist.</small>`
     + `<div style="margin-top:6px;font-weight:700">${a.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + a.grund.join(", ")}</div>`;
 }
 function entscheidKarte(p){
@@ -1791,6 +1792,7 @@ function pruefVergleich(liste){
   return `<div class="pruef-vergleich" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px">
     <h4 style="margin:0 0 8px">Vergleich deiner Kandidaten</h4>
     <label style="font-size:13px">Dein Startbudget: <input data-budget inputmode="numeric" style="width:90px" value="${pruefBudget()}"> €</label>
+    <label style="font-size:13px;margin-left:12px">Erste Bestellung: <input data-startmenge inputmode="numeric" style="width:70px" value="${pruefStartmenge()}"> Stück</label>
     <div style="overflow-x:auto"><table style="width:100%;font-size:13px;margin-top:8px"><tr><th style="text-align:left">Produkt</th><th>Prüfstand</th><th>Marge (später)</th><th>Gewinn/Monat</th><th>Startkapital</th><th>Bestanden</th></tr>${zeilen}</table></div>
     <small>Prüfstand 1 ist bestanden, wenn ein Angebot in dein Budget passt und das beste Angebot ab ${PRUEF.margeMin} % Marge und ${PRUEF.gewinnMin.toLocaleString("de-DE")} € Gewinn im Monat bringt. Alles sind Schätzungen ohne Herstellerangebot.</small>
   </div>`;
@@ -1815,9 +1817,10 @@ $("products").addEventListener("input", e => {
   karte.querySelector("[data-rechnung]").innerHTML = pruefErgebnis(pruefAuswertung(w), w);
 });
 $("products").addEventListener("change", e => {
-  if (!e.target.matches("[data-budget]")) return;
+  const schluessel = e.target.matches("[data-budget]") ? "startbudget" : e.target.matches("[data-startmenge]") ? "startmenge" : null;
+  if (!schluessel) return;
   const b = entscheidZahl(e.target.value);
-  try { if (b) localStorage.setItem("startbudget", String(b)); } catch (err) {}
+  try { if (b) localStorage.setItem(schluessel, String(Math.round(b))); } catch (err) {}
   renderProducts();
 });
 $("products").addEventListener("click", async e => {
