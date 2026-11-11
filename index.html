@@ -1704,13 +1704,50 @@ function pruefAngebote(s){
     return ek ? { ek, moq: m[2] ? Number(m[2]) : null } : null;
   }).filter(Boolean);
 }
+// Angebotstabelle (Prüfstand 2): je Hersteller Link und die Punkte, die geprüft werden müssen
+const ANGEBOT_PUNKTE = ["preis", "moq", "muster", "zertifikat", "lieferzeit", "logo"];
+function pruefListeLaden(p){ try { const l = JSON.parse(pruefExtra(p, "Angebote") || "[]"); return Array.isArray(l) ? l : []; } catch (err) { return []; } }
+function angebotZeile(o){
+  const v = x => esc(x == null ? "" : String(x));
+  const z = x => x == null ? "" : String(x).replace(".", ",");
+  const fertig = ANGEBOT_PUNKTE.filter(k => o[k] != null && String(o[k]).trim() !== "").length;
+  const link = /^https?:\/\//i.test(o.link || "") ? ` <a href="${v(o.link)}" target="_blank" rel="noopener" title="Angebot öffnen">↗</a>` : "";
+  return `<tr data-arow>
+    <td style="white-space:nowrap"><input data-a="link" placeholder="https://…" value="${v(o.link)}" style="width:140px">${link}</td>
+    <td><input data-a="hersteller" value="${v(o.hersteller)}" style="width:110px"></td>
+    <td><input data-a="preis" inputmode="decimal" value="${z(o.preis)}" style="width:60px"></td>
+    <td><input data-a="moq" inputmode="numeric" value="${v(o.moq)}" style="width:60px"></td>
+    <td><input data-a="muster" inputmode="decimal" value="${z(o.muster)}" style="width:60px"></td>
+    <td><input data-a="zertifikat" placeholder="z. B. Oeko-Tex" value="${v(o.zertifikat)}" style="width:100px"></td>
+    <td><input data-a="lieferzeit" inputmode="numeric" value="${v(o.lieferzeit)}" style="width:55px"></td>
+    <td><select data-a="logo"><option value="" ${!o.logo ? "selected" : ""}>?</option><option value="ja" ${o.logo === "ja" ? "selected" : ""}>ja</option><option value="nein" ${o.logo === "nein" ? "selected" : ""}>nein</option></select></td>
+    <td><input data-a="notiz" value="${v(o.notiz)}" style="width:120px"></td>
+    <td style="white-space:nowrap">${fertig}/${ANGEBOT_PUNKTE.length} <button type="button" class="ghost" data-angebot-weg title="Angebot entfernen">✕</button></td></tr>`;
+}
+function pruefAngeboteTabelle(liste){
+  const zeilen = (liste && liste.length ? liste : [{}]).map(angebotZeile).join("");
+  return `<div data-angebote><div style="font-size:13px;font-weight:700">Angebote der Hersteller</div>
+    <div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Link</th><th>Hersteller</th><th>Preis €</th><th>Mindestmenge</th><th>Muster €</th><th>Zertifikat</th><th>Lieferzeit (Tage)</th><th>Logo/Verpackung</th><th>Notiz</th><th>geprüft</th></tr></thead><tbody>${zeilen}</tbody></table></div>
+    <button type="button" class="ghost" data-angebot-neu>+ Angebot</button>
+    <small style="display:block">Pro Hersteller erfragen: Preis bei deiner Menge, Mindestmenge, Musterpreis, Zertifikat (z. B. Oeko-Tex, CertiPUR), Lieferzeit und ob Logo und eigene Verpackung gehen.</small></div>`;
+}
+function pruefZeilenLesen(karte){
+  return [...karte.querySelectorAll("tr[data-arow]")].map(tr => {
+    const g = k => { const el = tr.querySelector(`[data-a="${k}"]`); return el ? el.value.trim() : ""; };
+    return { link: g("link"), hersteller: g("hersteller"), preis: entscheidZahl(g("preis")), moq: entscheidZahl(g("moq")), muster: entscheidZahl(g("muster")), zertifikat: g("zertifikat"), lieferzeit: entscheidZahl(g("lieferzeit")), logo: g("logo"), notiz: g("notiz") };
+  }).filter(r => r.link || r.hersteller || r.preis != null);
+}
+const angeboteAusListe = l => (l || []).filter(r => r.preis).map(r => ({ ek: r.preis, moq: r.moq || null }));
 function pruefAngeboteText(l){ return (l || []).map(o => String(o.ek).replace(".", ",") + (o.moq ? " (" + o.moq + ")" : "")).join("; "); }
 function pruefWerte(p){
   const idee = pruefIdee(p);
   const umsatz = entscheidZahl(pruefExtra(p, "Umsatz"));
+  const stufe = p.stufe || 1;
+  const liste = pruefListeLaden(p);
   let angebote = pruefAngebote(pruefExtra(p, "Einkaufspreise"));
   if (!angebote.length && p.einkaufspreis != null) angebote = [{ ek: p.einkaufspreis, moq: null }];
-  return { vk: p.verkaufspreis, geb: p.fba_gebuehr, angebote, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
+  if (stufe >= 2 && liste.some(r => r.preis)) angebote = angeboteAusListe(liste);
+  return { vk: p.verkaufspreis, geb: p.fba_gebuehr, angebote, liste, kg: entscheidZahl(pruefExtra(p, "Gewicht")), umsatz: umsatz != null ? umsatz : (idee ? ddDeinUmsatz(idee) : null) };
 }
 // Feste Abzüge pro Stück (alles außer Einkauf)
 function pruefKosten(w){
@@ -1785,7 +1822,9 @@ const pruefZeile = (t, v, fett) => `<tr><td>${t}</td><td style="text-align:right
 function pruefZielErgebnis(z, w){
   if (!z) return "<small>Trag Verkaufspreis und Amazon-Gebühren ein, dann rechnet der Hub den Zielpreis.</small>";
   const abgleich = (w.angebote || []).map(o => `<span style="margin-right:10px">${euro2(o.ek)} ${o.ek <= z.maxEk ? "✓" : "✗"}</span>`).join("");
-  return `<div style="font-size:15px;font-weight:700;margin-bottom:6px">Einkauf höchstens ${euro2(Math.max(z.maxEk, 0))} pro Stück</div>`
+  const unreal = z.maxEk < PRUEF.zielMin;
+  return `<div style="font-size:15px;font-weight:700;margin-bottom:6px">Einkauf höchstens ${euro2(Math.max(z.maxEk, 0))} pro Stück${unreal ? " – zu diesem Verkaufspreis geht das Produkt nicht" : ""}</div>`
+    + (unreal ? `<small style="display:block;margin-bottom:6px">Kein Hersteller liefert dafür. Entweder fliegt das Produkt raus, oder du prüfst einen höheren Verkaufspreis (z. B. als Premium-Variante).</small>` : "")
     + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
     + pruefZeile("Verkaufspreis", euro2(w.vk)) + pruefZeile("ohne 19 % USt.", euro2(z.netto))
     + pruefZeile("− Amazon-Gebühren", euro2(w.geb)) + pruefZeile("− Lager", euro2(PRUEF.lager))
@@ -1794,8 +1833,8 @@ function pruefZielErgebnis(z, w){
     + pruefZeile("− dein Gewinn (" + PRUEF.margeMin + " %)", euro2(z.zielGewinn))
     + pruefZeile("= Einkauf höchstens", euro2(z.maxEk), true)
     + pruefZeile("Absatz pro Monat", z.absatz != null ? z.absatz + " Stück" : "–")
-    + pruefZeile("Gewinn pro Monat bei " + PRUEF.margeMin + " %", euro0(z.monat), true)
-    + pruefZeile("Startkapital (" + z.menge + " Stück zum Höchstpreis + Muster, Fotos, Werbung)", euro0(z.start), true) + `</table>`
+    + pruefZeile("Gewinn pro Monat bei " + PRUEF.margeMin + " %", unreal ? "–" : euro0(z.monat), true)
+    + pruefZeile("Startkapital (" + z.menge + " Stück zum Höchstpreis + Muster, Fotos, Werbung)", unreal ? "–" : euro0(z.start), true) + `</table>`
     + `<div style="font-size:13px;margin-top:8px"><b>Abgleich mit Alibaba:</b> ${abgleich || "noch keine Listenpreise eingetragen"}</div>`
     + `<div style="margin-top:6px;font-weight:700">${z.bestanden ? "✓ Prüfstand 1 bestanden" : "✗ Noch nicht bestanden: " + z.grund.join(", ")}</div>`;
 }
@@ -1838,7 +1877,7 @@ function entscheidKarte(p){
         <label>Gewicht kg (mit Verpackung)<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
         <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
       </div>
-      <label>${feldText}<input data-feld="einkaufspreise" style="width:100%" placeholder="${stufe === 1 ? "z. B. 6,79; 7,69; 10,84" : "z. B. 10,84 (20); 7,69 (200); 6,79 (300)"}" value="${esc(pruefAngeboteText(w.angebote))}"></label>
+      ${stufe === 1 ? `<label>${feldText}<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>` : pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })))}
       <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div>
       <div data-rechnung>${pruefStufeErgebnis(stufe, w)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1850,14 +1889,18 @@ function entscheidKarte(p){
 }
 function entscheidLesen(karte){
   const f = n => karte.querySelector(`[data-feld="${n}"]`);
-  return { risiken: f("risiken").value, verbesserung: f("verbesserung").value.trim(), vk: entscheidZahl(f("verkaufspreis").value), geb: entscheidZahl(f("fba_gebuehr").value), angebote: pruefAngebote(f("einkaufspreise").value), kg: entscheidZahl(f("gewicht").value), umsatz: entscheidZahl(f("umsatz").value) };
+  const stufe = Number(karte.dataset.stufe) || 1;
+  const liste = stufe >= 2 ? pruefZeilenLesen(karte) : [];
+  const angebote = stufe >= 2 ? angeboteAusListe(liste) : pruefAngebote(f("einkaufspreise") ? f("einkaufspreise").value : "");
+  return { risiken: f("risiken").value, verbesserung: f("verbesserung").value.trim(), vk: entscheidZahl(f("verkaufspreis").value), geb: entscheidZahl(f("fba_gebuehr").value), angebote, liste, kg: entscheidZahl(f("gewicht").value), umsatz: entscheidZahl(f("umsatz").value) };
 }
 function pruefVergleich(liste){
   if (!liste.length) return "";
   const zeilen = liste.map(p => {
     const w = pruefWerte(p), stufe = p.stufe || 1, z = pruefZiel(w), a = stufe >= 2 ? pruefAuswertung(w) : null;
-    const monat = a ? a.spaeter.monat : z ? z.monat : null;
-    const start = a ? a.start.start : z ? z.start : null;
+    const unreal = !a && z && z.maxEk < PRUEF.zielMin;
+    const monat = a ? a.spaeter.monat : (z && !unreal) ? z.monat : null;
+    const start = a ? a.start.start : (z && !unreal) ? z.start : null;
     const status = stufe === 1 ? (z ? (z.bestanden ? "✓" : "✗") : "offen") : (a ? (a.bestanden ? "✓" : "✗") : "offen");
     return `<tr><td>${esc(p.name)}</td><td style="text-align:center">${stufe}</td><td style="text-align:right">${z ? euro2(Math.max(z.maxEk, 0)) : "–"}</td><td style="text-align:right">${euro0(monat)}</td><td style="text-align:right">${euro0(start)}</td><td style="text-align:center">${status}</td></tr>`;
   }).join("");
@@ -1873,10 +1916,11 @@ function pruefDaten(karte, p){
   const w = entscheidLesen(karte);
   const stufe = p.stufe || 1;
   const z = stufe === 1 ? pruefZiel(w) : null, a = stufe >= 2 ? pruefAuswertung(w) : null;
-  const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Gewicht: ") && !String(x).startsWith("Umsatz: ") && !String(x).startsWith("Einkaufspreise: "));
+  const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Gewicht: ") && !String(x).startsWith("Umsatz: ") && !(stufe === 1 && String(x).startsWith("Einkaufspreise: ")) && !(stufe >= 2 && String(x).startsWith("Angebote: ")));
   if (w.kg != null) fragen.push("Gewicht: " + w.kg);
   if (w.umsatz != null) fragen.push("Umsatz: " + Math.round(w.umsatz));
-  if (w.angebote.length) fragen.push("Einkaufspreise: " + pruefAngeboteText(w.angebote));
+  if (stufe === 1 && w.angebote.length) fragen.push("Einkaufspreise: " + pruefAngeboteText(w.angebote));
+  if (stufe >= 2) fragen.push("Angebote: " + JSON.stringify(w.liste));
   return { w, stufe, upd: {
     risiken: w.risiken.split("\n").map(x => x.trim()).filter(Boolean), verbesserung: w.verbesserung || null, verkaufspreis: w.vk, fba_gebuehr: w.geb,
     einkaufspreis: a ? a.spaeter.ek : (z ? z.guenstig : null),
@@ -1916,13 +1960,26 @@ $("products").addEventListener("click", async e => {
     return loadProducts();
   }
   const { w, stufe, upd } = pruefDaten(knopf.closest(".entscheid"), p);
-  if (knopf.dataset.weiter) { if (!pruefBestanden(stufe, w)) return; upd.stufe = stufe + 1; }
+  if (knopf.dataset.weiter) {
+    if (!pruefBestanden(stufe, w)) return;
+    upd.stufe = stufe + 1;
+    if (stufe === 1 && !upd.offene_fragen.some(x => String(x).startsWith("Angebote: "))) upd.offene_fragen.push("Angebote: " + JSON.stringify(w.angebote.map(o => ({ preis: o.ek, moq: o.moq }))));
+  }
   pruefUngespeichert.delete(id);
   knopf.disabled = true;
   const { error } = await sb.from("produkte").update(upd).eq("id", id);
   knopf.disabled = false;
   if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
   await loadProducts();
+});
+$("products").addEventListener("click", e => {
+  const neu = e.target.closest("[data-angebot-neu]"), weg = e.target.closest("[data-angebot-weg]");
+  if (!neu && !weg) return;
+  const karte = e.target.closest(".entscheid");
+  if (!karte) return;
+  if (neu) karte.querySelector("[data-angebote] tbody").insertAdjacentHTML("beforeend", angebotZeile({}));
+  else weg.closest("tr").remove();
+  karte.querySelector("[data-angebote]").dispatchEvent(new Event("input", { bubbles: true }));
 });
 // Screenshot von Alibaba auslesen: Texterkennung direkt im Browser (Tesseract.js), Preise mit Mindestmengen paaren, danach speichern
 let ocrLaden = null;
@@ -1969,9 +2026,16 @@ $("products").addEventListener("change", async e => {
     const neu = ocrAngebote(data && data.text);
     if (!neu.length) { pruefUngespeichert.delete(pid); zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Preise von Hand ein."); return; }
     const eingabe = karte.querySelector('[data-feld="einkaufspreise"]');
-    const alle = [...pruefAngebote(eingabe.value), ...neu].filter((o, i, l) => l.findIndex(x => x.ek === o.ek && x.moq === o.moq) === i);
-    eingabe.value = pruefAngeboteText(alle);
-    eingabe.dispatchEvent(new Event("input", { bubbles: true }));
+    const tabelle = karte.querySelector("[data-angebote] tbody");
+    if (tabelle) {
+      [...tabelle.querySelectorAll("tr[data-arow]")].filter(tr => ![...tr.querySelectorAll("input")].some(i => i.value.trim())).forEach(tr => tr.remove());
+      neu.forEach(o => tabelle.insertAdjacentHTML("beforeend", angebotZeile({ preis: o.ek, moq: o.moq })));
+      tabelle.dispatchEvent(new Event("input", { bubbles: true }));
+    } else if (eingabe) {
+      const alle = [...pruefAngebote(eingabe.value), ...neu].filter((o, i, l) => l.findIndex(x => x.ek === o.ek && x.moq === o.moq) === i);
+      eingabe.value = pruefAngeboteText(alle);
+      eingabe.dispatchEvent(new Event("input", { bubbles: true }));
+    }
     zeige(neu.length + " Preise übernommen und gespeichert. Falsche Werte (z. B. alte, durchgestrichene Preise) einfach löschen und nochmal Speichern.");
     const speichern = karte.querySelector("[data-entscheid]");
     if (speichern) speichern.click(); else pruefUngespeichert.delete(pid);
