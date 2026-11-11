@@ -1453,7 +1453,7 @@ function renderTeam(){
     const open = quests.filter(q => q.status !== "erledigt" && z.phases.includes(q.phase)).length;
     z.open = open;
     if (z.tagEl) z.tagEl.innerHTML = tagHtml(z);
-    return `<li><span><span class="dot"></span><b>${esc(z.name)}</b><small>${esc(z.job)}</small></span><span class="muted">${open} offen</span></li>`;
+    return `<li data-id="${z.id}" style="cursor:pointer"><span><span class="dot"></span><b>${esc(z.name)}</b><small>${esc(z.job)}</small></span><span class="muted">${open} offen</span></li>`;
   }).join("");
 }
 
@@ -3767,6 +3767,8 @@ $("teamStatus").addEventListener("click", e => {
   if (b.dataset.id === "scout") openNico();
   else { setFilter("offen"); openPanel("aufgaben"); }
 });
+// Team-Liste: ein Klick auf Nico öffnet seine Karte
+$("team").addEventListener("click", e => { const li = e.target.closest("li[data-id]"); if (li && li.dataset.id === "scout") openNico(); });
 let lastStats = {done:0, open:0, products:0, wissen:0};
 let sceneLayout = null;
 let updateServerLabel = () => {};
