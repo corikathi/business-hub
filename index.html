@@ -1677,6 +1677,72 @@ function sortProducts(list){
     (a.verworfen_weil ? 1 : 0) - (b.verworfen_weil ? 1 : 0) || (Number(b.punkte) || 0) - (Number(a.punkte) || 0));
 }
 
+// Entscheidungs-Checkliste pro Produkt: Bewertungen, Verbesserung, Preise, Marge, Startkapital
+const entscheidOffen = new Set();
+function entscheidZahl(v){ const n = parseFloat(String(v ?? "").trim().split(" ").join("").replace(",", ".")); return isNaN(n) ? null : n; }
+function entscheidRechnung(vk, geb, ek, moq){
+  if (vk == null || ek == null || vk <= 0) return null;
+  const netto = vk / 1.19;
+  return { marge: Math.round(((netto - (geb || 0) - ek) / netto) * 100), start: moq ? Math.round(moq * ek) : null };
+}
+function entscheidText(r){
+  if (!r) return "<small>Marge: trag Verkaufspreis und Einkauf ein.</small>";
+  const farbe = r.marge >= 30 ? "grün" : r.marge >= 20 ? "gelb" : "rot";
+  return `<b>Marge ${r.marge} % (${farbe}, Ziel ab 30 %)</b>` + (r.start != null ? `<small> · Startkapital für die erste Bestellung ca. ${r.start.toLocaleString("de-DE")} €</small>` : "");
+}
+function entscheidKarte(p){
+  const moq = String((p.offene_fragen || []).find(x => String(x).startsWith("Mindestmenge: ")) || "").replace("Mindestmenge: ", "");
+  const r = entscheidRechnung(p.verkaufspreis, p.fba_gebuehr, p.einkaufspreis, entscheidZahl(moq));
+  const ok = b => b ? "✓" : "○";
+  const wert = v => v == null ? "" : String(v).replace(".", ",");
+  return `<details class="entscheid" data-pid="${esc(p.id)}" ${entscheidOffen.has(String(p.id)) ? "open" : ""} style="margin-top:8px"><summary>Entscheidung vorbereiten</summary>
+    <div style="display:grid;gap:8px;margin-top:8px">
+      <label>${ok((p.risiken || []).length)} 1. Was nervt Käuferinnen? (1–3 Sterne lesen, eine Beschwerde pro Zeile)<textarea data-feld="risiken" rows="3" style="width:100%">${esc((p.risiken || []).join("\n"))}</textarea></label>
+      <label>${ok(p.verbesserung)} 2. Deine Verbesserung (ein Satz)<input data-feld="verbesserung" style="width:100%" value="${esc(p.verbesserung || "")}"></label>
+      <label>${ok(p.verkaufspreis)} 3. Verkaufspreis in € (inkl. MwSt.)<input data-feld="verkaufspreis" inputmode="decimal" value="${wert(p.verkaufspreis)}"></label>
+      <label>${ok(p.fba_gebuehr)} 4. Amazon-Gebühr in € pro Stück<input data-feld="fba_gebuehr" inputmode="decimal" value="${wert(p.fba_gebuehr)}"></label>
+      <label>${ok(p.einkaufspreis)} 5. Einkauf inkl. Versand in € pro Stück (Alibaba)<input data-feld="einkaufspreis" inputmode="decimal" value="${wert(p.einkaufspreis)}"></label>
+      <label>${ok(moq)} 6. Mindestmenge beim Hersteller (Stück)<input data-feld="moq" inputmode="numeric" value="${esc(moq)}"></label>
+      <div data-rechnung>${entscheidText(r)}</div>
+      <button type="button" data-entscheid="${esc(p.id)}">Speichern</button>
+    </div></details>`;
+}
+function entscheidLesen(karte){
+  const f = n => karte.querySelector(`[data-feld="${n}"]`);
+  return { risiken: f("risiken").value, verbesserung: f("verbesserung").value.trim(), vk: entscheidZahl(f("verkaufspreis").value), geb: entscheidZahl(f("fba_gebuehr").value), ek: entscheidZahl(f("einkaufspreis").value), moq: entscheidZahl(f("moq").value) };
+}
+$("products").addEventListener("toggle", e => {
+  if (!e.target.classList || !e.target.classList.contains("entscheid")) return;
+  if (e.target.open) entscheidOffen.add(e.target.dataset.pid); else entscheidOffen.delete(e.target.dataset.pid);
+}, true);
+$("products").addEventListener("input", e => {
+  const karte = e.target.closest(".entscheid");
+  if (!karte) return;
+  const w = entscheidLesen(karte);
+  karte.querySelector("[data-rechnung]").innerHTML = entscheidText(entscheidRechnung(w.vk, w.geb, w.ek, w.moq));
+});
+$("products").addEventListener("click", async e => {
+  const knopf = e.target.closest("[data-entscheid]");
+  if (!knopf) return;
+  const karte = knopf.closest(".entscheid");
+  const w = entscheidLesen(karte);
+  const r = entscheidRechnung(w.vk, w.geb, w.ek, w.moq);
+  const p = products.find(x => String(x.id) === knopf.dataset.entscheid);
+  const fragen = ((p && p.offene_fragen) || []).filter(x => !String(x).startsWith("Mindestmenge: "));
+  if (w.moq) fragen.push("Mindestmenge: " + w.moq);
+  knopf.disabled = true;
+  const { error } = await sb.from("produkte").update({
+    risiken: w.risiken.split("\n").map(x => x.trim()).filter(Boolean),
+    verbesserung: w.verbesserung || null,
+    verkaufspreis: w.vk, fba_gebuehr: w.geb, einkaufspreis: w.ek,
+    marge_prozent: r ? r.marge : null,
+    startinvestition: r ? r.start : null,
+    offene_fragen: fragen,
+  }).eq("id", knopf.dataset.entscheid);
+  knopf.disabled = false;
+  if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
+  await loadProducts();
+});
 function renderProducts(){
   // Nur die übrig gebliebenen Produkte: verworfene (rot oder mit Grund) gehören nicht hierher
   const uebrig = products.filter(p => !p.verworfen_weil && p.ampel !== "rot");
@@ -1686,7 +1752,7 @@ function renderProducts(){
     $("products").innerHTML = sortProducts(uebrig).map(p => `
       <div class="prod ${p.verworfen_weil ? "verworfen" : ""}" data-id="${esc(p.id)}">
         <span class="ampel ${esc(p.ampel)}" title="Ampel aus der Recherche"></span>
-        <div class="pn">${esc(p.name)}<small>${esc(p.grund || "")}</small>${prodDetails(p)}</div>
+        <div class="pn">${esc(p.name)}<small>${esc(p.grund || "")}</small>${prodDetails(p)}${entscheidKarte(p)}</div>
         <button class="del" data-act="del" title="Löschen" aria-label="Löschen">×</button>
       </div>`).join("");
   }
@@ -2144,7 +2210,7 @@ async function loadIdeen(){
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
   const { data: alleDaten, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
   // Saisonware (Grund beginnt mit „Saison“) bleibt in der Datenbank, ist aber ausgeblendet, bis du „Saisonware anzeigen“ tippst
-  const istSaison = i => /^(Saison|Ausgeblendet)/.test(i.grund || "");
+  const istSaison = i => /^(Saison|Ausgeblendet)/.test(i.grund || "") || /^Ampel rot/.test(i.ergebnis || "");
   const saisonAnzahl = (alleDaten || []).filter(istSaison).length;
   const data = zeigeSaison ? alleDaten : (alleDaten || []).filter(i => !istSaison(i));
   const el = $("ideenBereich");
@@ -3052,6 +3118,12 @@ ddInput.addEventListener("change", async () => {
     const alterBegriff = zielIdee && /Suchbegriff: ([^·|]+)/.exec(zielIdee.ergebnis || "");
     const r = nischeAuswerten(compText, kwText, listText, dateien[0].name, zielIdee && zielIdee.text, alterBegriff && alterBegriff[1].replace(/\s*\(Amazon-Vorschlag\)/, "").trim());
     if (alterBegriff) r.ergebnis += " | Suchbegriff: " + alterBegriff[1].trim();
+    // Suchvolumen automatisch aus den Helium-Daten der Idee übernehmen (Xray liefert keins)
+    const heliumSV = zielIdee && /Helium: ([\d.]+) Suchen/.exec(zielIdee.ergebnis || "");
+    if (heliumSV && /Suchvolumen unbekannt/.test(r.ergebnis)) {
+      const upd = suchvolumenNachtragen({ ergebnis: r.ergebnis }, Number(heliumSV[1].split(".").join("")));
+      if (upd && upd.ergebnis) { r.ergebnis = upd.ergebnis; if (upd.grund) r.grund = upd.grund; }
+    }
     const { data: gespeichert, error } = ddZiel === "neu"
       ? await sb.from("ideen").insert({ text: `${r.name} (Data Dive)`, richtung: "Data Dive", status: ddOffen({ ergebnis: r.ergebnis }) ? "wird geprüft" : "bewertet", ergebnis: r.ergebnis, grund: r.grund }).select()
       : await sb.from("ideen").update({ ergebnis: r.ergebnis, grund: r.grund }).eq("id", ddZiel).select();
