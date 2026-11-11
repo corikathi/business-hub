@@ -1680,6 +1680,8 @@ function sortProducts(list){
 // Prüfstand 1 (Recherche): Grobkalkulation ohne Herstellerkontakt. Wer besteht, kommt eine Runde weiter.
 // Angebote mit Preis und Mindestmenge: „Start“ = beste Marge im Budget (Testbestellung), „Später“ = beste Marge bei Nachbestellung.
 const entscheidOffen = new Set();
+const pruefUngespeichert = new Set();
+const pruefOcrInfo = {};
 const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, menge: 200, nebenkosten: 1100, margeMin: 25, gewinnMin: 1000 };
 function pruefBudget(){ try { return Number(localStorage.getItem("startbudget")) || 3000; } catch (err) { return 3000; } }
 function pruefStartmenge(){ try { return Number(localStorage.getItem("startmenge")) || 100; } catch (err) { return 100; } }
@@ -1784,7 +1786,7 @@ function entscheidKarte(p){
         <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
       </div>
       <label>Angebote von Alibaba: Preis € (Mindestmenge), mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 10,84 (20); 7,69 (200); 6,79 (300)" value="${esc(pruefAngeboteText(w.angebote))}"></label>
-      <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo></small></div>
+      <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div>
       <div data-rechnung>${pruefErgebnis(a, w)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" data-entscheid="${esc(p.id)}">Speichern</button>
@@ -1825,6 +1827,7 @@ $("products").addEventListener("input", e => {
   const karte = e.target.closest(".entscheid");
   if (!karte) return;
   const w = entscheidLesen(karte);
+  pruefUngespeichert.add(karte.dataset.pid);
   karte.querySelector("[data-rechnung]").innerHTML = pruefErgebnis(pruefAuswertung(w), w);
 });
 $("products").addEventListener("change", e => {
@@ -1842,11 +1845,13 @@ $("products").addEventListener("click", async e => {
   if (!p) return;
   if (knopf.dataset.raus) {
     if (!confirm(`„${p.name}“ fliegt raus? Es bleibt in der Datenbank, wird hier aber ausgeblendet.`)) return;
+    pruefUngespeichert.delete(id);
     const { error } = await sb.from("produkte").update({ ampel: "rot", grund: "Prüfstand " + (p.stufe || 1) + " nicht bestanden" }).eq("id", id);
     if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
     return loadProducts();
   }
   const { a, upd } = pruefDaten(knopf.closest(".entscheid"), p);
+  pruefUngespeichert.delete(id);
   if (knopf.dataset.weiter) { if (!a || !a.bestanden) return; upd.stufe = 2; }
   knopf.disabled = true;
   const { error } = await sb.from("produkte").update(upd).eq("id", id);
@@ -1889,23 +1894,30 @@ $("products").addEventListener("change", async e => {
   if (!feld || !feld.files || !feld.files[0]) return;
   const karte = feld.closest(".entscheid");
   const info = feld.parentElement.querySelector("[data-ocrinfo]");
-  const zeige = t => { if (info) info.textContent = t; };
+  const pid = karte ? karte.dataset.pid : "";
+  if (pid) pruefUngespeichert.add(pid);
+  const zeige = t => { pruefOcrInfo[pid] = t; if (info) info.textContent = t; };
   zeige("Wird gelesen … beim ersten Mal ca. 20 Sekunden.");
   try {
     await ocrBereit();
     const { data } = await window.Tesseract.recognize(feld.files[0], "deu+eng");
     const neu = ocrAngebote(data && data.text);
-    if (!neu.length) { zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Angebote von Hand ein."); return; }
+    if (!neu.length) { pruefUngespeichert.delete(pid); zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Angebote von Hand ein."); return; }
     const eingabe = karte.querySelector('[data-feld="einkaufspreise"]');
     const alle = [...pruefAngebote(eingabe.value), ...neu].filter((o, i, l) => l.findIndex(x => x.ek === o.ek && x.moq === o.moq) === i);
     eingabe.value = pruefAngeboteText(alle);
     eingabe.dispatchEvent(new Event("input", { bubbles: true }));
-    zeige(neu.length + " Angebote übernommen. Bitte kurz prüfen (alte, durchgestrichene Preise löschen) und dann Speichern.");
+    zeige(neu.length + " Angebote übernommen und gespeichert. Falsche Werte (z. B. alte, durchgestrichene Preise) einfach löschen und nochmal Speichern.");
+    const speichern = karte.querySelector("[data-entscheid]");
+    if (speichern) speichern.click(); else pruefUngespeichert.delete(pid);
   } catch (err) {
+    pruefUngespeichert.delete(pid);
     zeige("Hat nicht geklappt: " + err.message);
   }
 });
-function renderProducts(){
+function renderProducts(erzwingen){
+  // Nicht neu zeichnen, solange in einem Prüfstand ungespeicherte Eingaben oder eine Texterkennung laufen
+  if (!erzwingen && pruefUngespeichert.size) { renderKpis(); renderNext(); return; }
   // Nur die übrig gebliebenen Produkte: verworfene (rot oder mit Grund) gehören nicht hierher
   const uebrig = products.filter(p => !p.verworfen_weil && p.ampel !== "rot");
   if (!uebrig.length) {
