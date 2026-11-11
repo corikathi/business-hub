@@ -2398,7 +2398,7 @@ function renderFilterStand(){
 // To-do: welche Suchbegriffe du als Nächstes in Helium 10 prüfst
 // 1. Ideen in Arbeit („Prüfe ich gerade“) ohne Ampel, 2. Nicos prüfenswerte Ideen ohne Ampel. Mit Ampel ist eine Idee erledigt (Suchvolumen kann fehlen)
 // Dein To-Do: was du als Nächstes tun musst (nicht was Nico tut)
-$("todo") && $("todo").addEventListener("click", e => { const z = e.target.closest("[data-todo]"); if (!z) return; ideenTab = z.dataset.todo; loadIdeen(); const b = $("ideenBereich"); if (b) b.scrollIntoView({ behavior: "smooth", block: "start" }); });
+$("todo") && $("todo").addEventListener("click", e => { const z = e.target.closest("[data-todo]"); if (!z) return; if (z.dataset.todo === "naechste") { const n = $("naechste"); if (n) n.scrollIntoView({ behavior: "smooth", block: "start" }); return; } ideenTab = z.dataset.todo; loadIdeen(); const b = $("ideenBereich"); if (b) b.scrollIntoView({ behavior: "smooth", block: "start" }); });
 $("todo") && $("todo").addEventListener("click", async e => {
   const kopie = e.target.closest("[data-kopie]");
   if (!kopie) return;
@@ -2445,7 +2445,7 @@ function renderTodo(){
   const zeile = (titel, liste, reiter) => liste.length ? '<div data-todo="' + reiter + '" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #333;cursor:pointer"><span>' + titel + ' →</span><b>' + liste.length + '</b></div>' : "";
   const begriffe = [...new Set(ohneSV.map(i => ((/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1] || "").replace(/\(Amazon-Vorschlag\)/i, "").trim()).filter(Boolean))];
   const kopien = begriffe.length ? '<details' + (todoSvOffen ? ' open' : '') + ' style="margin:6px 0 10px"><summary>Suchbegriffe eintragen (' + begriffe.length + ')</summary>' + begriffe.map(b => '<div style="display:flex;gap:6px;align-items:center;padding:4px 0;flex-wrap:wrap"><span style="flex:1;min-width:140px">' + esc(b) + '</span><button type="button" class="kopier" data-kopie="' + esc(b) + '" title="Kopieren">⧉</button><input type="text" inputmode="numeric" placeholder="Suchvolumen" data-svbegriff="' + esc(b) + '" style="width:110px"><button type="button" class="ghost dd-knopf" data-svsave="' + esc(b) + '">Speichern</button></div>').join('') + '</details>' : "";
-  const html = zeile("Entscheiden", entscheiden, "rang") + zeile("Suchvolumen eintragen", ohneSV, "geprueft") + kopien + zeile("Xray hochladen", xray, "alle");
+  const html = zeile("Entscheiden", entscheiden, "rang") + zeile("Suchvolumen eintragen", ohneSV, "geprueft") + kopien + zeile("Xray hochladen", xray, "naechste");
   el.innerHTML = '<div class="todo" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px"><h4 style="margin:0 0 8px">Dein To-Do</h4><form id="neueSuchIdee" style="display:grid;gap:6px;margin:0 0 12px"><input id="nsiName" maxlength="120" placeholder="Idee, z. B. Archivbox aus Leinen" required><input id="nsiBegriff" maxlength="80" placeholder="Suchbegriff, z. B. archivbox"><input id="nsiSV" type="text" inputmode="numeric" placeholder="Suchvolumen (optional)"><button type="submit">Idee hinzufügen</button></form>' + (html || '<small>Gerade nichts zu tun.</small>') + '</div>';
 }
 function renderNaechste(){
@@ -2463,7 +2463,7 @@ function renderNaechste(){
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
     .map(i => ({ i, was: "noch ohne Vorcheck, direkt mit Xray und Schwarze Box prüfen" })));
   const gesehen = new Set();
-  const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 5);
+  const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 30);
   if (!liste.length) { el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4><small class="muted">Noch keine Idee hat den Vorcheck bestanden. Nico prüft im Hintergrund weiter und meldet sich auf Telegram, wenn er fertig ist.</small></div>`; return; }
   el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4>` + liste.map(({ i, was }) => {
     const begriff = ddSuchbegriff(i);
