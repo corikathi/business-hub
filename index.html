@@ -657,6 +657,27 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
   .phasecol .next{flex:1;display:flex;flex-direction:column;gap:8px}
   .phasecol .next .acard{flex:1 1 auto;padding:10px 14px;gap:4px;border-radius:14px}
 }
+.pm-einstellungen{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:12px}
+.pm-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+.pm-liste{display:grid;gap:8px}
+.pm-liste button.pm-kachel{display:grid;gap:3px;text-align:left;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:400}
+.pm-liste button.pm-kachel.on{border:2px solid var(--accent)}
+.pm-kachel small{color:var(--muted)}
+.pm-detail{border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0}
+.pm-detailkopf{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pm-schritte{display:flex;gap:6px;flex-wrap:wrap}
+.pm-schritt{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pm-schritt.on{border-color:var(--accent);color:var(--accent)}
+.pm-schritt.fertig{color:var(--ok)}
+.pm-zahlen{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pm-zahl{background:var(--bg);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.pm-zahl small{color:var(--muted)}
+.pm-zahl b{font-size:20px}
+.pm-teile{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.pm-teil{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:8px;min-width:0}
+.pm-teil.breit{grid-column:1/-1}
+.pm-rechenweg summary{cursor:pointer;color:var(--muted);font-size:13px}
+@media (max-width:860px){.pm-layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -777,9 +798,10 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
 
       <section class="block">
         <h2>Produkte</h2>
-        <p class="note">Nur die Produkte, die den Trichter überstanden haben. Recherchen steuerst du bei Nico.</p>
-        <div id="top3"></div>
+        <p class="note">Links deine Kandidaten. Rechts prüfst du einen davon Schritt für Schritt.</p>
+        
         <div id="products" style="margin-top:8px"></div>
+        <details id="top3wrap" style="margin-top:18px"><summary>Neue Kandidaten aus der Rangliste</summary><div id="top3"></div></details>
         <label class="importbtn">Rechercheergebnis importieren (.json)<input type="file" id="importFile" accept=".json,application/json" hidden></label>
         <div class="note" id="importInfo"></div>
         <div class="err" id="prodErr"></div>
@@ -1867,28 +1889,97 @@ function entscheidKarte(p){
   const stufe = p.stufe || 1;
   const wert = v => v == null ? "" : String(v).replace(".", ",");
   const ok = b => b ? "✓" : "○";
-  const titel = stufe === 1 ? "Prüfstand 1: Zielpreis (Recherche)" : stufe === 2 ? "Prüfstand 2: Herstellerangebote" : "Prüfstand 3: Muster (kommt als Nächstes)";
-  const feldText = stufe === 1 ? "Alibaba-Listenpreise zum Abgleich, mit ; trennen" : "Angebote der Hersteller: Preis € (Mindestmenge), mit ; trennen";
-  return `<details class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" ${entscheidOffen.has(String(p.id)) ? "open" : ""} style="margin-top:8px"><summary>${titel}</summary>
-    <div style="display:grid;gap:8px;margin-top:8px">
-      <label>${ok((p.risiken || []).length)} Was nervt Käufer? (1–3 Sterne lesen, eine Beschwerde pro Zeile)<textarea data-feld="risiken" rows="3" style="width:100%">${esc((p.risiken || []).join("\n"))}</textarea></label>
-      <label>${ok(p.verbesserung)} Deine Verbesserung (ein Satz)<input data-feld="verbesserung" style="width:100%" value="${esc(p.verbesserung || "")}"></label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
-        <label>Verkaufspreis € (brutto)<input data-feld="verkaufspreis" inputmode="decimal" value="${wert(w.vk)}"></label>
-        <label>Amazon-Gebühren € (Xray)<input data-feld="fba_gebuehr" inputmode="decimal" value="${wert(w.geb)}"></label>
-        <label>Gewicht kg (mit Verpackung)<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
-        <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
-      </div>
-      ${stufe === 1 ? `<label>${feldText}<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>` : pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })))}
-      <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div>
-      <div data-rechnung>${pruefStufeErgebnis(stufe, w)}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" data-entscheid="${esc(p.id)}">Speichern</button>
-        ${stufe <= 2 && pruefBestanden(stufe, w) ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand ${stufe + 1}</button>` : ""}
-        <button type="button" class="ghost" data-raus="${esc(p.id)}">Fliegt raus</button>
-      </div>
-    </div></details>`;
+  const teilC = stufe === 1
+    ? `<label>Listenpreise von Alibaba, mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>`
+    : pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })));
+  return `<div class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" style="display:grid;gap:14px">
+    <div data-rechnung>${pmErgebnis(stufe, w)}</div>
+    <div class="pm-teile">
+      <div class="pm-teil"><b>A · Zahlen aus Xray</b>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          <label>Verkaufspreis € (brutto)<input data-feld="verkaufspreis" inputmode="decimal" value="${wert(w.vk)}"></label>
+          <label>Amazon-Gebühren €<input data-feld="fba_gebuehr" inputmode="decimal" value="${wert(w.geb)}"></label>
+          <label>Gewicht kg<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
+          <label>Umsatz realistisch €/Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
+        </div></div>
+      <div class="pm-teil"><b>B · Käufer</b>
+        <label>${ok((p.risiken || []).length)} Was nervt Käufer? (eine Beschwerde pro Zeile)<textarea data-feld="risiken" rows="3" style="width:100%">${esc((p.risiken || []).join("\n"))}</textarea></label>
+        <label>${ok(p.verbesserung)} Deine Verbesserung (ein Satz)<input data-feld="verbesserung" style="width:100%" value="${esc(p.verbesserung || "")}"></label></div>
+      <div class="pm-teil breit"><b>${stufe === 1 ? "C · Alibaba-Preise zum Abgleich" : "C · Angebote der Hersteller"}</b>${teilC}
+        <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${stufe <= 2 && pruefBestanden(stufe, w) ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand ${stufe + 1}</button>` : ""}
+      <button type="button" class="${stufe <= 2 && pruefBestanden(stufe, w) ? "ghost" : ""}" data-entscheid="${esc(p.id)}">Speichern</button>
+      <button type="button" class="ghost" data-raus="${esc(p.id)}">Fliegt raus</button>
+    </div>
+  </div>`;
 }
+// Kennzahlen als Kacheln, Rechenweg eingeklappt
+let pmRechenwegOffen = false;
+function pmZahl(t, v, art){ const farbe = art === "gut" ? "var(--ok)" : art === "schlecht" ? "#ff6b6b" : "inherit"; return `<div class="pm-zahl"><small>${t}</small><b style="color:${farbe}">${v}</b></div>`; }
+function pmStatus(ok, grund, n){ return `<div style="font-weight:700;margin:10px 0 4px;color:${ok ? "var(--ok)" : "inherit"}">${ok ? "✓ Prüfstand " + n + " bestanden" : "✗ Noch nicht bestanden: " + grund.join(", ")}</div>`; }
+function pmRechenweg(inhalt){ return `<details class="pm-rechenweg" ${pmRechenwegOffen ? "open" : ""}><summary>Rechenweg anzeigen</summary>${inhalt}</details>`; }
+function pmErgebnis(stufe, w){
+  const warn = pruefGewichtWarnung(w);
+  if (stufe === 1) {
+    const z = pruefZiel(w);
+    if (!z) return warn + "<small>Trag unter A Verkaufspreis und Amazon-Gebühren ein, dann rechnet der Hub.</small>";
+    const unreal = z.maxEk < PRUEF.zielMin;
+    const ali = z.alibaba === null ? ["noch offen", ""] : ["ab " + euro2(z.guenstig) + (z.alibaba ? " ✓" : " ✗"), z.alibaba ? "gut" : "schlecht"];
+    return warn + `<div class="pm-zahlen">`
+      + pmZahl("Einkauf höchstens", euro2(Math.max(z.maxEk, 0)), unreal ? "schlecht" : "")
+      + pmZahl("Gewinn pro Monat", unreal ? "–" : euro0(z.monat))
+      + pmZahl("Startkapital", unreal ? "–" : euro0(z.start), !unreal && z.start > z.budget ? "schlecht" : "")
+      + pmZahl("Alibaba", ali[0], ali[1]) + `</div>`
+      + pmStatus(z.bestanden, z.grund, 1) + pmRechenweg(pruefZielErgebnis(z, w));
+  }
+  const r = pruefAuswertung(w);
+  if (!r) return warn + "<small>Trag unter C die Angebote der Hersteller ein, dann rechnet der Hub.</small>";
+  return warn + `<div class="pm-zahlen">`
+    + pmZahl("Bestes Angebot", euro2(r.spaeter.ek))
+    + pmZahl("Marge später", r.spaeter.marge + " %", r.spaeter.marge >= PRUEF.margeMin ? "gut" : "schlecht")
+    + pmZahl("Gewinn pro Monat", euro0(r.spaeter.monat))
+    + pmZahl("Startkapital", euro0(r.start.start), r.start.start <= r.budget ? "" : "schlecht") + `</div>`
+    + pmStatus(r.bestanden, r.grund, 2) + pmRechenweg(pruefErgebnis(r, w));
+}
+// Linke Liste: eine Kachel pro Kandidat
+function pmStand(p){
+  const w = pruefWerte(p), stufe = p.stufe || 1, z = pruefZiel(w);
+  if (stufe === 1) {
+    if (!z) return { text: "Zahlen fehlen", art: "offen", max: null };
+    if (z.bestanden) return { text: "bestanden", art: "gut", max: z.maxEk };
+    if (z.maxEk < PRUEF.zielMin) return { text: "geht nicht", art: "schlecht", max: z.maxEk };
+    if (z.alibaba === null) return { text: "Alibaba fehlt", art: "offen", max: z.maxEk };
+    return { text: "nicht bestanden", art: "schlecht", max: z.maxEk };
+  }
+  const r = pruefAuswertung(w);
+  if (!r) return { text: "Angebote fehlen", art: "offen", max: z ? z.maxEk : null };
+  return { text: r.bestanden ? "bestanden" : "nicht bestanden", art: r.bestanden ? "gut" : "schlecht", max: z ? z.maxEk : null };
+}
+function pmKachel(p, aktiv){
+  const s = pmStand(p), stufe = p.stufe || 1;
+  const farbe = { gut: "var(--ok)", schlecht: "#ff6b6b", offen: "var(--warn)" }[s.art] || "var(--muted)";
+  return `<button type="button" class="pm-kachel ${aktiv ? "on" : ""}" data-pm="${esc(p.id)}"><b>${esc(p.name)}</b><small>Prüfstand ${stufe}${s.max != null ? " · max. " + euro2(Math.max(s.max, 0)) : ""}</small><span style="color:${farbe};font-size:13px">● ${s.text}</span></button>`;
+}
+function pmDetail(p){
+  const stufe = p.stufe || 1;
+  const schritt = (n, t) => `<span class="pm-schritt ${n === stufe ? "on" : n < stufe ? "fertig" : ""}">${n < stufe ? "✓" : n} ${t}</span>`;
+  return `<div class="pm-detailkopf"><h3 style="margin:0">${esc(p.name)}</h3><div class="pm-schritte">${schritt(1, "Zielpreis")}${schritt(2, "Hersteller")}${schritt(3, "Muster")}</div></div>` + entscheidKarte(p);
+}
+function pruefEinstellungen(){ return `<label style="font-size:13px">Dein Startbudget: <input data-budget inputmode="numeric" style="width:90px" value="${pruefBudget()}"> €</label><label style="font-size:13px">Erste Bestellung: <input data-startmenge inputmode="numeric" style="width:70px" value="${pruefStartmenge()}"> Stück</label>`; }
+let pmAuswahl = null;
+$("products").addEventListener("click", e => {
+  if (e.target.closest("[data-pmneu]")) { const d = $("top3wrap"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
+  const k = e.target.closest("[data-pm]");
+  if (!k) return;
+  if (pmAuswahl && pruefUngespeichert.has(pmAuswahl) && !confirm("Du hast hier noch nicht gespeichert. Änderungen verwerfen?")) return;
+  if (pmAuswahl) pruefUngespeichert.delete(pmAuswahl);
+  pmAuswahl = k.dataset.pm;
+  renderProducts(true);
+});
+$("products").addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("pm-rechenweg")) pmRechenwegOffen = e.target.open; }, true);
+
 function entscheidLesen(karte){
   const f = n => karte.querySelector(`[data-feld="${n}"]`);
   const stufe = Number(karte.dataset.stufe) || 1;
@@ -1939,7 +2030,7 @@ $("products").addEventListener("input", e => {
   if (!karte) return;
   const w = entscheidLesen(karte);
   pruefUngespeichert.add(karte.dataset.pid);
-  karte.querySelector("[data-rechnung]").innerHTML = pruefStufeErgebnis(Number(karte.dataset.stufe) || 1, w);
+  karte.querySelector("[data-rechnung]").innerHTML = pmErgebnis(Number(karte.dataset.stufe) || 1, w);
 });
 $("products").addEventListener("change", e => {
   const schluessel = e.target.matches("[data-budget]") ? "startbudget" : e.target.matches("[data-startmenge]") ? "startmenge" : null;
@@ -2049,17 +2140,15 @@ $("products").addEventListener("change", async e => {
 function renderProducts(erzwingen){
   // Nicht neu zeichnen, solange in einem Prüfstand ungespeicherte Eingaben oder eine Texterkennung laufen
   if (!erzwingen && pruefUngespeichert.size) { renderKpis(); renderNext(); return; }
-  // Nur die übrig gebliebenen Produkte: verworfene (rot oder mit Grund) gehören nicht hierher
+  // Nur die übrig gebliebenen Kandidaten: verworfene (rot oder mit Grund) gehören nicht hierher
   const uebrig = products.filter(p => !p.verworfen_weil && p.ampel !== "rot");
   if (!uebrig.length) {
-    $("products").innerHTML = `<div class="empty">Noch keine Produkte. Sobald eine Recherche durch ist, erscheinen die übrig gebliebenen hier.</div>`;
+    $("products").innerHTML = `<div class="empty">Noch keine Kandidaten. Übernimm unten eine Idee aus der Rangliste.</div>`;
   } else {
-    $("products").innerHTML = pruefVergleich(uebrig) + sortProducts(uebrig).map(p => `
-      <div class="prod ${p.verworfen_weil ? "verworfen" : ""}" data-id="${esc(p.id)}">
-        <span class="ampel ${esc(p.ampel)}" title="Ampel aus der Recherche"></span>
-        <div class="pn">${esc(p.name)}<small>${esc(p.grund || "")}</small>${prodDetails(p)}${entscheidKarte(p)}</div>
-        <button class="del" data-act="del" title="Löschen" aria-label="Löschen">×</button>
-      </div>`).join("");
+    const liste = sortProducts(uebrig);
+    if (!liste.some(p => String(p.id) === pmAuswahl)) pmAuswahl = String(liste[0].id);
+    const sel = liste.find(p => String(p.id) === pmAuswahl);
+    $("products").innerHTML = `<div class="pm-einstellungen">${pruefEinstellungen()}</div><div class="pm-layout"><div class="pm-liste">${liste.map(p => pmKachel(p, String(p.id) === pmAuswahl)).join("")}<button type="button" class="ghost" data-pmneu>+ Neue aus der Rangliste</button></div><div class="pm-detail">${pmDetail(sel)}</div></div>`;
   }
   renderKpis();
   renderNext();
