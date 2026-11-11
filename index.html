@@ -1754,6 +1754,7 @@ function entscheidKarte(p){
         <label>Verkaufspreis € (brutto)<input data-feld="verkaufspreis" inputmode="decimal" value="${wert(w.vk)}"></label>
         <label>Amazon-Gebühren € (Xray)<input data-feld="fba_gebuehr" inputmode="decimal" value="${wert(w.geb)}"></label>
         <label>Einkaufspreise € (Alibaba, mehrere mit ; trennen)<input data-feld="einkaufspreise" placeholder="z. B. 6,79; 7,69; 10,84" value="${(w.ekListe || []).map(wert).join("; ")}"></label>
+        <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo></small></div>
         <label>Gewicht kg (mit Verpackung)<input data-feld="gewicht" inputmode="decimal" value="${wert(w.kg)}"></label>
         <label>Umsatz realistisch € / Monat<input data-feld="umsatz" inputmode="numeric" value="${w.umsatz != null ? Math.round(w.umsatz) : ""}"></label>
       </div>
@@ -1824,6 +1825,58 @@ $("products").addEventListener("click", async e => {
   knopf.disabled = false;
   if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
   await loadProducts();
+});
+// Screenshot von Alibaba auslesen: Texterkennung direkt im Browser (Tesseract.js), Preise und Mindestmengen finden
+let ocrLaden = null;
+function ocrBereit(){
+  if (window.Tesseract) return Promise.resolve();
+  if (!ocrLaden) ocrLaden = new Promise((ok, fehler) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = ok;
+    s.onerror = () => { ocrLaden = null; fehler(new Error("Die Texterkennung konnte nicht geladen werden.")); };
+    document.head.appendChild(s);
+  });
+  return ocrLaden;
+}
+function ocrPreise(text){
+  const t = String(text || "").replace(/\s+/g, " ");
+  const preise = [];
+  const bereich = /(\d{1,4}[.,]\d{2})\s*[-–—]\s*(\d{1,4}[.,]\d{2})\s*€/g;
+  let m;
+  while ((m = bereich.exec(t))) preise.push(entscheidZahl(m[1]));
+  const rest = t.replace(bereich, " ");
+  const einzel = /(\d{1,4}[.,]\d{2})\s*€/g;
+  while ((m = einzel.exec(rest))) preise.push(entscheidZahl(m[1]));
+  const mengen = [...t.matchAll(/Mindestbestellmenge:?\s*(\d+)/gi)].map(x => Number(x[1]));
+  return { preise: preise.filter(n => n != null && n > 0 && n < 1000).slice(0, 12), mengen };
+}
+$("products").addEventListener("click", e => {
+  const knopf = e.target.closest("[data-ocrknopf]");
+  if (!knopf) return;
+  const feld = knopf.parentElement.querySelector("input[data-ocr]");
+  if (feld) { feld.value = ""; feld.click(); }
+});
+$("products").addEventListener("change", async e => {
+  const feld = e.target.closest("input[data-ocr]");
+  if (!feld || !feld.files || !feld.files[0]) return;
+  const karte = feld.closest(".entscheid");
+  const info = feld.parentElement.querySelector("[data-ocrinfo]");
+  const zeige = t => { if (info) info.textContent = t; };
+  zeige("Wird gelesen … beim ersten Mal ca. 20 Sekunden.");
+  try {
+    await ocrBereit();
+    const { data } = await window.Tesseract.recognize(feld.files[0], "deu+eng");
+    const { preise, mengen } = ocrPreise(data && data.text);
+    if (!preise.length) { zeige("Keine Preise gefunden. Nimm einen schärferen Screenshot oder trag die Preise von Hand ein."); return; }
+    const eingabe = karte.querySelector('[data-feld="einkaufspreise"]');
+    const alle = [...pruefListe(eingabe.value), ...preise].filter((n, i, l) => l.indexOf(n) === i);
+    eingabe.value = alle.map(n => String(n).replace(".", ",")).join("; ");
+    eingabe.dispatchEvent(new Event("input", { bubbles: true }));
+    zeige(preise.length + " Preise übernommen" + (mengen.length ? " · Mindestmengen: " + mengen.join(", ") + " Stück" : "") + ". Bitte kurz prüfen und dann Speichern.");
+  } catch (err) {
+    zeige("Hat nicht geklappt: " + err.message);
+  }
 });
 function renderProducts(){
   // Nur die übrig gebliebenen Produkte: verworfene (rot oder mit Grund) gehören nicht hierher
