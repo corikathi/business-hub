@@ -2774,8 +2774,8 @@ async function loadIdeen(){
   const bestanden = teile2(i => /Vorcheck: bestanden/.test(i.ergebnis || "")), rest = teile2(i => !/Vorcheck: bestanden/.test(i.ergebnis || ""));
   const zahl = m => [...m.values()].reduce((s, l) => s + l.length, 0);
   el.innerHTML = `<div class="ireiter-leiste">${reiter}</div>` + eigeneForm + hochladen
-    + `<div class="alle-teil ok"><h4>Vorcheck bestanden (${zahl(bestanden)})</h4>${zahl(bestanden) ? zeichneGruppen(bestanden) : leer("Noch keine. Nico prüft im Hintergrund.")}</div>`
-    + `<details class="alle-teil rest"><summary>Alle anderen Ideen (${zahl(rest)}): noch nicht vorgeprüft oder durchgefallen</summary>${zeichneGruppen(rest)}</details>`;
+    + `<div class="alle-teil ok"><h4>Vorcheck bestanden (${zahl(bestanden)})</h4>${zahl(bestanden) ? zeichneGruppen(bestanden) : leer("Noch keine. Trag Helium-Zahlen über „Helium-Liste hochladen“ ein.")}</div>`
+    + `<details class="alle-teil rest" open><summary>Alle anderen Ideen (${zahl(rest)}): noch nicht vorgeprüft oder durchgefallen</summary>${zeichneGruppen(rest)}</details>`;
 }
 $("ideenBereich") && $("ideenBereich").addEventListener("submit", async e => {
   if (e.target.id !== "eigeneIdee") return;
@@ -2981,7 +2981,7 @@ function renderNaechste(){
     .map(i => ({ i, was: "noch ohne Vorcheck, direkt mit Xray und Schwarze Box prüfen" })));
   const gesehen = new Set();
   const liste = offen.filter(x => !gesehen.has(x.i.id) && gesehen.add(x.i.id)).slice(0, 30);
-  if (!liste.length) { el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4><small class="muted">Noch keine Idee hat den Vorcheck bestanden. Nico prüft im Hintergrund weiter und meldet sich auf Telegram, wenn er fertig ist.</small></div>`; return; }
+  if (!liste.length) { el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4><small class="muted">Noch keine Idee hat den Vorcheck bestanden. Lade eine Helium-Liste hoch und meldet sich auf Telegram, wenn er fertig ist.</small></div>`; return; }
   el.innerHTML = `<div class="naechste"><h4>Als Nächstes prüfen</h4>` + liste.map(({ i, was }) => {
     const begriff = ddSuchbegriff(i);
     return `<div class="naechste-zeile"><div><b>${esc(i.text)}</b><small>${esc(was)}</small></div>
