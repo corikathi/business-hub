@@ -2407,7 +2407,9 @@ function renderTodo(){
   const xray = alle.filter(i => !/^Ampel /.test(i.ergebnis || "") && /Vorcheck: bestanden/.test(i.ergebnis || ""));
   const entscheiden = alle.filter(i => /^Ampel grün/.test(i.ergebnis || "") && !ddSvFehlt(i) && !istProdukt(i));
   const zeile = (titel, liste, reiter) => liste.length ? '<div data-todo="' + reiter + '" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #333;cursor:pointer"><span>' + titel + ' →</span><b>' + liste.length + '</b></div>' : "";
-  const html = zeile("Suchvolumen eintragen", ohneSV, "geprueft") + zeile("Xray hochladen", xray, "alle") + zeile("Entscheiden", entscheiden, "rang");
+  const begriffe = [...new Set(ohneSV.map(i => ((/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1] || "").replace(/\(Amazon-Vorschlag\)/i, "").trim()).filter(Boolean))];
+  const kopien = begriffe.length ? '<details style="margin:6px 0 10px"><summary>Suchbegriffe zum Kopieren (' + begriffe.length + ')</summary>' + begriffe.map(b => '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>' + esc(b) + '</span><button type="button" class="kopier" data-kopie="' + esc(b) + '" title="Suchbegriff kopieren">⧉</button></div>').join("") + "</details>" : "";
+  const html = zeile("Suchvolumen eintragen", ohneSV, "geprueft") + kopien + zeile("Xray hochladen", xray, "alle") + zeile("Entscheiden", entscheiden, "rang");
   el.innerHTML = '<div class="todo" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px"><h4 style="margin:0 0 8px">Dein To-Do</h4>' + (html || '<small>Gerade nichts zu tun.</small>') + '</div>';
 }
 function renderNaechste(){
