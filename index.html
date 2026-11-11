@@ -678,6 +678,9 @@ nav.menu{flex-direction:column;align-items:stretch;gap:4px}
 .pm-teil.breit{grid-column:1/-1}
 .pm-rechenweg summary{cursor:pointer;color:var(--muted);font-size:13px}
 @media (max-width:860px){.pm-layout{grid-template-columns:1fr}}
+.pm-abschnitt{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.pm-abschnitt>summary{cursor:pointer;list-style:none}
+.pm-status{font-size:12px;color:var(--muted);margin-left:6px}
 </style>
 </head>
 <body>
@@ -1889,11 +1892,18 @@ function entscheidKarte(p){
   const stufe = p.stufe || 1;
   const wert = v => v == null ? "" : String(v).replace(".", ",");
   const ok = b => b ? "✓" : "○";
-  const teilC = stufe === 1
+  const z1 = pruefZiel(w);
+  const a2 = pruefAuswertung(w);
+  const s1 = z1 && z1.bestanden ? "✓ bestanden" : "offen";
+  const s2 = a2 ? (a2.bestanden ? "✓ bestanden" : "noch nicht bestanden") : "offen";
+  const alibaba = stufe === 1
     ? `<label>Listenpreise von Alibaba, mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>`
-    : pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })));
+    : `<small>Alibaba-Listenpreise: ${esc(pruefAngeboteText(w.angebote)) || "keine"}</small>`;
+  const tabelle = stufe >= 2
+    ? pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })))
+    : `<small>Hersteller-Angebote werden freigeschaltet, sobald Prüfstand 1 bestanden ist.</small>`;
+  const titelStufe = stufe === 1 ? "Prüfstand 1 · Zielpreis" : stufe === 2 ? "Prüfstand 2 · Hersteller" : "Prüfstand 3 · Muster";
   return `<div class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" style="display:grid;gap:14px">
-    <div data-rechnung>${pmErgebnis(stufe, w)}</div>
     <div class="pm-teile">
       <div class="pm-teil"><b>A · Zahlen aus Xray</b>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
@@ -1905,9 +1915,14 @@ function entscheidKarte(p){
       <div class="pm-teil"><b>B · Käufer</b>
         <label>${ok((p.risiken || []).length)} Was nervt Käufer? (eine Beschwerde pro Zeile)<textarea data-feld="risiken" rows="3" style="width:100%">${esc((p.risiken || []).join("\n"))}</textarea></label>
         <label>${ok(p.verbesserung)} Deine Verbesserung (ein Satz)<input data-feld="verbesserung" style="width:100%" value="${esc(p.verbesserung || "")}"></label></div>
-      <div class="pm-teil breit"><b>${stufe === 1 ? "C · Alibaba-Preise zum Abgleich" : "C · Angebote der Hersteller"}</b>${teilC}
-        <div><input type="file" accept="image/*" data-ocr="${esc(p.id)}" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>${esc(pruefOcrInfo[String(p.id)] || "")}</small></div></div>
     </div>
+    <details class="pm-abschnitt" ${stufe === 1 ? "open" : ""}><summary><b>Prüfstand 1 · Zielpreis</b> <span class="pm-status">${s1}</span></summary>
+      <div style="display:grid;gap:10px;margin-top:8px">${alibaba}</div></details>
+    <details class="pm-abschnitt" ${stufe === 2 ? "open" : ""}><summary><b>Prüfstand 2 · Hersteller</b> <span class="pm-status">${s2}</span></summary>
+      <div style="display:grid;gap:10px;margin-top:8px">${tabelle}</div></details>
+    <details class="pm-abschnitt" ${stufe === 3 ? "open" : ""}><summary><b>Prüfstand 3 · Muster</b> <span class="pm-status">kommt als Nächstes</span></summary>
+      <small style="display:block;margin-top:8px">Muster bestellen, sobald Prüfstand 2 bestanden ist.</small></details>
+    <div><b style="font-size:13px">Ergebnis: ${titelStufe}</b><div data-rechnung style="margin-top:6px">${pmErgebnis(stufe, w)}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${stufe <= 2 && pruefBestanden(stufe, w) ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand ${stufe + 1}</button>` : ""}
       <button type="button" class="${stufe <= 2 && pruefBestanden(stufe, w) ? "ghost" : ""}" data-entscheid="${esc(p.id)}">Speichern</button>
