@@ -2143,7 +2143,7 @@ async function loadIdeen(){
   // Aussortierte Ideen (raus) werden ausgeblendet, sie bleiben in der Datenbank
   const { data: alleDaten, error } = await sb.from("ideen").select("*").neq("status", "raus").order("created_at", { ascending: false }).limit(1000);
   // Saisonware (Grund beginnt mit „Saison“) bleibt in der Datenbank, ist aber ausgeblendet, bis du „Saisonware anzeigen“ tippst
-  const istSaison = i => /^Saison/.test(i.grund || "");
+  const istSaison = i => /^(Saison|Ausgeblendet)/.test(i.grund || "");
   const saisonAnzahl = (alleDaten || []).filter(istSaison).length;
   const data = zeigeSaison ? alleDaten : (alleDaten || []).filter(i => !istSaison(i));
   const el = $("ideenBereich");
@@ -2151,7 +2151,7 @@ async function loadIdeen(){
   const hochladen = `<div class="dd-leiste"><button type="button" class="dd-knopf dd-haupt" data-dd="helium-liste">Helium-Liste hochladen (Schwarze Box)</button> <button type="button" class="ghost" data-dd="neu">Export hochladen (neue Nische)</button></div>`;
   if (error) { el.innerHTML = `<div class="empty">Ideen konnten nicht geladen werden.</div>`; return; }
   ideenCache = data || [];
-  if ($("saisonLink")) $("saisonLink").innerHTML = saisonAnzahl ? '<button type="button" class="ghost" id="saisonUmschalten">' + (zeigeSaison ? "Saisonware ausblenden" : "Saisonware anzeigen (" + saisonAnzahl + ")") + "</button>" : "";
+  if ($("saisonLink")) $("saisonLink").innerHTML = saisonAnzahl ? '<button type="button" class="ghost" id="saisonUmschalten">' + (zeigeSaison ? "Ausgeblendete ausblenden" : "Ausgeblendete anzeigen (" + saisonAnzahl + ")") + "</button>" : "";
   renderTop3();
   renderNaechste();
   if (!data || !data.length) { el.innerHTML = `<div class="empty">Noch keine Ideen. Starte bei Schritt 1 eine Runde.</div>` + hochladen; return; }
