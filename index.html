@@ -4211,6 +4211,15 @@ function openPanel(key){
   $("drawer").scrollTop = 0;
   $("veil").classList.add("on");
   document.querySelectorAll("[data-open]").forEach(b => b.classList.toggle("on", b.dataset.open === key));
+  // Produkte: breit von der linken Navigation bis zum rechten Rand (nur am großen Bildschirm)
+  if (key === "produkte" && innerWidth > 860) {
+    const nav = document.querySelector("header");
+    const rechts = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
+    const links = rechts + 16;
+    d.style.left = links + "px"; d.style.top = "16px"; d.style.transform = "none";
+    d.style.width = Math.max(320, innerWidth - links - 16) + "px";
+    d.style.maxHeight = (innerHeight - 32) + "px";
+  }
 }
 document.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.open)));
 function closeDrawer(){
