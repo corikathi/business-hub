@@ -1709,7 +1709,7 @@ function sortProducts(list){
 const entscheidOffen = new Set();
 const pruefUngespeichert = new Set();
 const pruefOcrInfo = {};
-const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, nebenkosten: 1100, margeMin: 25, gewinnMin: 1000, zielMin: 3 };
+const PRUEF = { ust: 1.19, lager: 0.5, frachtProKg: 1.25, werbung: 0.12, retouren: 0.03, nebenkosten: 1100, margeMin: 20, gewinnMin: 1000, zielMin: 3 };
 function pruefBudget(){ try { return Number(localStorage.getItem("startbudget")) || 3000; } catch (err) { return 3000; } }
 function pruefStartmenge(){ try { return Number(localStorage.getItem("startmenge")) || 100; } catch (err) { return 100; } }
 function entscheidZahl(v){
