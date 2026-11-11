@@ -2399,6 +2399,12 @@ function renderFilterStand(){
 // 1. Ideen in Arbeit („Prüfe ich gerade“) ohne Ampel, 2. Nicos prüfenswerte Ideen ohne Ampel. Mit Ampel ist eine Idee erledigt (Suchvolumen kann fehlen)
 // Dein To-Do: was du als Nächstes tun musst (nicht was Nico tut)
 $("todo") && $("todo").addEventListener("click", e => { const z = e.target.closest("[data-todo]"); if (!z) return; ideenTab = z.dataset.todo; loadIdeen(); const b = $("ideenBereich"); if (b) b.scrollIntoView({ behavior: "smooth", block: "start" }); });
+$("todo") && $("todo").addEventListener("click", async e => {
+  const kopie = e.target.closest("[data-kopie]");
+  if (!kopie) return;
+  try { await navigator.clipboard.writeText(kopie.dataset.kopie); } catch (err) { const t = document.createElement("textarea"); t.value = kopie.dataset.kopie; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  kopie.textContent = "✓"; kopie.classList.add("ok"); setTimeout(() => { kopie.textContent = "⧉"; kopie.classList.remove("ok"); }, 1500);
+});
 function renderTodo(){
   const el = $("todo");
   if (!el) return;
