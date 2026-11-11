@@ -1928,6 +1928,7 @@ function entscheidKarte(p){
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${stufe <= 2 && pruefBestanden(stufe, w) ? `<button type="button" data-weiter="${esc(p.id)}">Weiter zu Prüfstand ${stufe + 1}</button>` : ""}
       <button type="button" class="${stufe <= 2 && pruefBestanden(stufe, w) ? "ghost" : ""}" data-entscheid="${esc(p.id)}">Speichern</button>
+      <button type="button" class="ghost" data-spaeter="${esc(p.id)}">Für später merken</button>
       <button type="button" class="ghost" data-raus="${esc(p.id)}">Fliegt raus</button>
     </div>
   </div>`;
@@ -2091,6 +2092,21 @@ $("products").addEventListener("click", e => {
   else weg.closest("tr").remove();
   karte.querySelector("[data-angebote]").dispatchEvent(new Event("input", { bubbles: true }));
 });
+// Für später merken oder zurückholen
+$("products").addEventListener("click", async e => {
+  const k = e.target.closest("[data-spaeter], [data-zurueck]");
+  if (!k) return;
+  const id = k.dataset.spaeter || k.dataset.zurueck;
+  const p = products.find(x => String(x.id) === id);
+  if (!p) return;
+  const upd = k.dataset.spaeter
+    ? { ampel: "rot", grund: "Für später: " + (p.grund || "") }
+    : { ampel: "gelb", grund: (p.grund || "").replace(/^Für später: /, "") };
+  pruefUngespeichert.delete(id);
+  const { error } = await sb.from("produkte").update(upd).eq("id", id);
+  if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
+  await loadProducts();
+});
 // Screenshot von Alibaba auslesen: Texterkennung direkt im Browser (Tesseract.js), Preise mit Mindestmengen paaren, danach speichern
 let ocrLaden = null;
 function ocrBereit(){
@@ -2154,6 +2170,12 @@ $("products").addEventListener("change", async e => {
     zeige("Hat nicht geklappt: " + err.message);
   }
 });
+// Für später gemerkte Produkte: ausgeblendet, aber nicht gelöscht, zum Zurückholen unten auf der Seite
+function pmSpaeterBlock(){
+  const liste = products.filter(p => p.ampel === "rot" && /^Für später/.test(p.grund || ""));
+  if (!liste.length) return "";
+  return `<details class="pm-spaeter" style="margin-top:14px"><summary>Für später gemerkt (${liste.length})</summary>${liste.map(p => `<div class="pm-spaeter-zeile"><b>${esc(p.name)}</b><small>${esc(p.grund)}</small><button type="button" class="ghost" data-zurueck="${esc(p.id)}">Zurückholen</button></div>`).join("")}</details>`;
+}
 function renderProducts(erzwingen){
   // Nicht neu zeichnen, solange in einem Prüfstand ungespeicherte Eingaben oder eine Texterkennung laufen
   if (!erzwingen && pruefUngespeichert.size) { renderKpis(); renderNext(); return; }
@@ -2165,7 +2187,7 @@ function renderProducts(erzwingen){
     const liste = sortProducts(uebrig);
     if (!liste.some(p => String(p.id) === pmAuswahl)) pmAuswahl = String(liste[0].id);
     const sel = liste.find(p => String(p.id) === pmAuswahl);
-    $("products").innerHTML = `<div class="pm-einstellungen">${pruefEinstellungen()}</div><div class="pm-layout"><div class="pm-liste">${liste.map(p => pmKachel(p, String(p.id) === pmAuswahl)).join("")}<button type="button" class="ghost" data-pmneu>+ Neue aus der Rangliste</button></div><div class="pm-detail">${pmDetail(sel)}</div></div>`;
+    $("products").innerHTML = `<div class="pm-einstellungen">${pruefEinstellungen()}</div><div class="pm-layout"><div class="pm-liste">${liste.map(p => pmKachel(p, String(p.id) === pmAuswahl)).join("")}<button type="button" class="ghost" data-pmneu>+ Neue aus der Rangliste</button></div><div class="pm-detail">${pmDetail(sel)}</div></div>${pmSpaeterBlock()}`;
   }
   renderKpis();
   renderNext();
