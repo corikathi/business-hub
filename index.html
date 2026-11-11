@@ -1742,6 +1742,8 @@ function angebotZeile(o){
     <td><input data-a="hersteller" value="${v(o.hersteller)}" style="width:110px"></td>
     <td><input data-a="preis" inputmode="decimal" value="${z(o.preis)}" style="width:60px"></td>
     <td><input data-a="moq" inputmode="numeric" value="${v(o.moq)}" style="width:60px"></td>
+    <td><input data-a="teile" inputmode="numeric" value="${v(o.teile || 1)}" style="width:50px" title="Wie viele Teile stecken in einem Angebot? 1 = Einzelteil, 5 = 5er-Set"></td>
+    <td style="white-space:nowrap">${o.preis ? euro2((Number(o.preis) || 0) / (Number(o.teile) || 1)) : "–"}</td>
     <td><input data-a="muster" inputmode="decimal" value="${z(o.muster)}" style="width:60px"></td>
     <td><input data-a="zertifikat" placeholder="z. B. Oeko-Tex" value="${v(o.zertifikat)}" style="width:100px"></td>
     <td><input data-a="lieferzeit" inputmode="numeric" value="${v(o.lieferzeit)}" style="width:55px"></td>
@@ -1752,14 +1754,14 @@ function angebotZeile(o){
 function pruefAngeboteTabelle(liste){
   const zeilen = (liste && liste.length ? liste : [{}]).map(angebotZeile).join("");
   return `<div data-angebote><div style="font-size:13px;font-weight:700">Angebote der Hersteller</div>
-    <div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Link</th><th>Hersteller</th><th>Preis €</th><th>Mindestmenge</th><th>Muster €</th><th>Zertifikat</th><th>Lieferzeit (Tage)</th><th>Logo/Verpackung</th><th>Notiz</th><th>geprüft</th></tr></thead><tbody>${zeilen}</tbody></table></div>
+    <div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Link</th><th>Hersteller</th><th>Preis €</th><th>Mindestmenge</th><th>Teile</th><th>pro Teil</th><th>Muster €</th><th>Zertifikat</th><th>Lieferzeit (Tage)</th><th>Logo/Verpackung</th><th>Notiz</th><th>geprüft</th></tr></thead><tbody>${zeilen}</tbody></table></div>
     <button type="button" class="ghost" data-angebot-neu>+ Angebot</button>
     <small style="display:block">Pro Hersteller erfragen: Preis bei deiner Menge, Mindestmenge, Musterpreis, Zertifikat (z. B. Oeko-Tex, CertiPUR), Lieferzeit und ob Logo und eigene Verpackung gehen.</small></div>`;
 }
 function pruefZeilenLesen(karte){
   return [...karte.querySelectorAll("tr[data-arow]")].map(tr => {
     const g = k => { const el = tr.querySelector(`[data-a="${k}"]`); return el ? el.value.trim() : ""; };
-    return { link: g("link"), hersteller: g("hersteller"), preis: entscheidZahl(g("preis")), moq: entscheidZahl(g("moq")), muster: entscheidZahl(g("muster")), zertifikat: g("zertifikat"), lieferzeit: entscheidZahl(g("lieferzeit")), logo: g("logo"), notiz: g("notiz") };
+    return { link: g("link"), hersteller: g("hersteller"), preis: entscheidZahl(g("preis")), moq: entscheidZahl(g("moq")), teile: entscheidZahl(g("teile")) || 1, muster: entscheidZahl(g("muster")), zertifikat: g("zertifikat"), lieferzeit: entscheidZahl(g("lieferzeit")), logo: g("logo"), notiz: g("notiz") };
   }).filter(r => r.link || r.hersteller || r.preis != null);
 }
 const angeboteAusListe = l => (l || []).filter(r => r.preis).map(r => ({ ek: r.preis, moq: r.moq || null }));
