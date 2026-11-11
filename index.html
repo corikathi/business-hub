@@ -2677,7 +2677,7 @@ async function loadIdeen(){
   const geprueft = data.filter(istGeprueft).sort((a, b) => ampelRang(a) - ampelRang(b) || a.text.localeCompare(b.text, "de"));
   const gruppen = new Map();
   for (const i of data) { if (i.status === "wird geprüft" || istGeprueft(i)) continue; const k = i.richtung || "Ohne Kategorie"; if (!gruppen.has(k)) gruppen.set(k, []); gruppen.get(k).push(i); }
-  if (ideenOffen === null) ideenOffen = new Set();
+  if (ideenOffen === null) ideenOffen = new Set(["Eigene Ideen"]);
   const karte = i => {
     const ampel = /^Ampel (grün|gelb|rot)\. /.exec(i.ergebnis || "");
     const pille = ampel ? `<span class="idee-status ampel-${ampel[1]}">Ampel ${ampel[1]}</span>`
