@@ -1898,11 +1898,12 @@ function entscheidKarte(p){
   const a2 = pruefAuswertung(w);
   const s1 = z1 && z1.bestanden ? "✓ bestanden" : "offen";
   const s2 = a2 ? (a2.bestanden ? "✓ bestanden" : "noch nicht bestanden") : "offen";
+  const ocrKnopf = '<div><input type="file" accept="image/*" data-ocr="' + esc(p.id) + '" hidden><button type="button" class="ghost" data-ocrknopf>Screenshot auslesen</button> <small data-ocrinfo>' + esc(pruefOcrInfo[String(p.id)] || "") + "</small></div>";
   const alibaba = stufe === 1
-    ? `<label>Listenpreise von Alibaba, mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>`
+    ? `<label>Listenpreise von Alibaba, mit ; trennen<input data-feld="einkaufspreise" style="width:100%" placeholder="z. B. 6,79; 7,69; 10,84" value="${esc(pruefAngeboteText(w.angebote))}"></label>${ocrKnopf}`
     : `<small>Alibaba-Listenpreise: ${esc(pruefAngeboteText(w.angebote)) || "keine"}</small>`;
   const tabelle = stufe >= 2
-    ? pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq })))
+    ? pruefAngeboteTabelle(w.liste.length ? w.liste : w.angebote.map(o => ({ preis: o.ek, moq: o.moq }))) + ocrKnopf
     : `<small>Hersteller-Angebote werden freigeschaltet, sobald Prüfstand 1 bestanden ist.</small>`;
   const titelStufe = stufe === 1 ? "Prüfstand 1 · Zielpreis" : stufe === 2 ? "Prüfstand 2 · Hersteller" : "Prüfstand 3 · Muster";
   return `<div class="entscheid" data-pid="${esc(p.id)}" data-stufe="${stufe}" style="display:grid;gap:14px">
