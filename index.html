@@ -2426,7 +2426,7 @@ $("todo") && $("todo").addEventListener("submit", async e => {
   e.preventDefault();
   const name = $("nsiName").value.trim();
   const begriff = $("nsiBegriff").value.trim().toLowerCase();
-  const sv = parseInt(String($("nsiSV").value || "").replace(/D/g, ""), 10);
+  const sv = parseInt(String($("nsiSV").value || "").replace(/\D/g, ""), 10);
   if (!name) return;
   const hatSV = !isNaN(sv);
   const ergebnis = begriff ? "Suchbegriff: " + begriff + (hatSV ? " · Helium: " + sv.toLocaleString("de-DE") + " Suchen (von dir eingetragen)" : "") : "";
