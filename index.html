@@ -1818,12 +1818,14 @@ function pruefMengen(w, budget){
     return { q, r, ok: r.start <= budget };
   }).filter(Boolean);
 }
+// Warnung bei unplausiblem Gewicht (z. B. 260 statt 26,0 kg)
+const pruefGewichtWarnung = w => w.kg != null && w.kg > 40 ? `<div style="color:#c0392b;font-weight:700;margin-bottom:6px">⚠ Gewicht ${String(w.kg).replace(".", ",")} kg – stimmt das? Bitte in kg mit Komma eintragen, z. B. 2,6.</div>` : "";
 const pruefZeile = (t, v, fett) => `<tr><td>${t}</td><td style="text-align:right">${fett ? "<b>" + v + "</b>" : v}</td></tr>`;
 function pruefZielErgebnis(z, w){
   if (!z) return "<small>Trag Verkaufspreis und Amazon-Gebühren ein, dann rechnet der Hub den Zielpreis.</small>";
   const abgleich = (w.angebote || []).map(o => `<span style="margin-right:10px">${euro2(o.ek)} ${o.ek <= z.maxEk ? "✓" : "✗"}</span>`).join("");
   const unreal = z.maxEk < PRUEF.zielMin;
-  return `<div style="font-size:15px;font-weight:700;margin-bottom:6px">Einkauf höchstens ${euro2(Math.max(z.maxEk, 0))} pro Stück${unreal ? " – zu diesem Verkaufspreis geht das Produkt nicht" : ""}</div>`
+  return pruefGewichtWarnung(w) + `<div style="font-size:15px;font-weight:700;margin-bottom:6px">Einkauf höchstens ${euro2(Math.max(z.maxEk, 0))} pro Stück${unreal ? " – zu diesem Verkaufspreis geht das Produkt nicht" : ""}</div>`
     + (unreal ? `<small style="display:block;margin-bottom:6px">Kein Hersteller liefert dafür. Entweder fliegt das Produkt raus, oder du prüfst einen höheren Verkaufspreis (z. B. als Premium-Variante).</small>` : "")
     + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
     + pruefZeile("Verkaufspreis", euro2(w.vk)) + pruefZeile("ohne 19 % USt.", euro2(z.netto))
@@ -1843,7 +1845,7 @@ function pruefErgebnis(a, w){
   const s = a.spaeter;
   const rolle = r => [r === a.start ? "Start" : "", r === a.spaeter ? "Später" : ""].filter(Boolean).join(" + ");
   const zeilen = a.liste.map(r => `<tr><td>${euro2(r.ek)}</td><td style="text-align:right">${r.menge}${r.moq && r.moq > pruefStartmenge() ? " (Mindestmenge)" : ""}</td><td style="text-align:right">${r.marge} %</td><td style="text-align:right">${euro0(r.monat)}</td><td style="text-align:right">${euro0(r.start)}</td><td><b>${rolle(r)}</b></td></tr>`).join("");
-  return `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Rechnung pro Stück beim besten Angebot (${euro2(s.ek)})</div>`
+  return pruefGewichtWarnung(w) + `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Rechnung pro Stück beim besten Angebot (${euro2(s.ek)})</div>`
     + `<table style="width:100%;font-size:13px;border-collapse:collapse">`
     + pruefZeile("Verkaufspreis", euro2(w.vk)) + pruefZeile("ohne 19 % USt.", euro2(s.netto))
     + pruefZeile("− Amazon-Gebühren", euro2(w.geb)) + pruefZeile("− Lager", euro2(PRUEF.lager)) + pruefZeile("− Einkauf", euro2(s.ek))
