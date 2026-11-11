@@ -2421,6 +2421,20 @@ $("todo") && $("todo").addEventListener("click", async e => {
 });
 let todoSvOffen = false;
 $("todo") && $("todo").addEventListener("toggle", e => { if (e.target.tagName === "DETAILS") todoSvOffen = e.target.open; }, true);
+$("todo") && $("todo").addEventListener("submit", async e => {
+  if (e.target.id !== "neueSuchIdee") return;
+  e.preventDefault();
+  const name = $("nsiName").value.trim();
+  const begriff = $("nsiBegriff").value.trim().toLowerCase();
+  const sv = parseInt(String($("nsiSV").value || "").replace(/D/g, ""), 10);
+  if (!name) return;
+  const hatSV = !isNaN(sv);
+  const ergebnis = begriff ? "Suchbegriff: " + begriff + (hatSV ? " · Helium: " + sv.toLocaleString("de-DE") + " Suchen (von dir eingetragen)" : "") : "";
+  const { error } = await sb.from("ideen").insert({ text: name, richtung: "Eigene Ideen", status: hatSV ? "bewertet" : "neu", grund: hatSV ? "Prüfenswert: aus der Suche gefunden" : "Vorschlag, noch nicht geprüft", ergebnis });
+  if (error) { alert("Konnte nicht gespeichert werden: " + error.message); return; }
+  e.target.reset();
+  await loadIdeen();
+});
 function renderTodo(){
   const el = $("todo");
   if (!el) return;
@@ -2432,7 +2446,7 @@ function renderTodo(){
   const begriffe = [...new Set(ohneSV.map(i => ((/Suchbegriff: ([^·|]+)/.exec(i.ergebnis || "") || [])[1] || "").replace(/\(Amazon-Vorschlag\)/i, "").trim()).filter(Boolean))];
   const kopien = begriffe.length ? '<details' + (todoSvOffen ? ' open' : '') + ' style="margin:6px 0 10px"><summary>Suchbegriffe eintragen (' + begriffe.length + ')</summary>' + begriffe.map(b => '<div style="display:flex;gap:6px;align-items:center;padding:4px 0;flex-wrap:wrap"><span style="flex:1;min-width:140px">' + esc(b) + '</span><button type="button" class="kopier" data-kopie="' + esc(b) + '" title="Kopieren">⧉</button><input type="number" min="0" placeholder="Suchvolumen" data-svbegriff="' + esc(b) + '" style="width:110px"><button type="button" class="ghost dd-knopf" data-svsave="' + esc(b) + '">Speichern</button></div>').join('') + '</details>' : "";
   const html = zeile("Suchvolumen eintragen", ohneSV, "geprueft") + kopien + zeile("Xray hochladen", xray, "alle") + zeile("Entscheiden", entscheiden, "rang");
-  el.innerHTML = '<div class="todo" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px"><h4 style="margin:0 0 8px">Dein To-Do</h4>' + (html || '<small>Gerade nichts zu tun.</small>') + '</div>';
+  el.innerHTML = '<div class="todo" style="border:1px solid #ccc;border-radius:12px;padding:12px;margin:0 0 12px"><h4 style="margin:0 0 8px">Dein To-Do</h4><form id="neueSuchIdee" style="display:grid;gap:6px;margin:0 0 12px"><input id="nsiName" maxlength="120" placeholder="Idee, z. B. Archivbox aus Leinen" required><input id="nsiBegriff" maxlength="80" placeholder="Suchbegriff, z. B. archivbox"><input id="nsiSV" type="number" min="0" placeholder="Suchvolumen (optional)"><button type="submit">Idee hinzufügen</button></form>' + (html || '<small>Gerade nichts zu tun.</small>') + '</div>';
 }
 function renderNaechste(){
   renderFilterStand();
